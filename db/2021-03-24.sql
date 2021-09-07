@@ -1,0 +1,1 @@
+ALTER TABLE `Asistencia` ADD `estado` TINYINT NOT NULL AFTER `tipo`;
