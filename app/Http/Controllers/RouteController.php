@@ -41,7 +41,7 @@ class RouteController extends Controller
                                 'layout',rc.layout,
                                 'show',rc.show
                             )
-                            order by rc.idRoute
+                            order by rc.orderRoute,rc.idRoute
                         )
                         ,
                         ']'

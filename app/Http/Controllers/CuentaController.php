@@ -756,7 +756,7 @@ class CuentaController extends Controller
                 
             $Cuenta = new Cuenta();
             $Cuenta->fechaEmision = $request->fechaEmision;
-            $Cuenta->fechaVencimiento = $request->fechaVencimiento;
+            $Cuenta->fechaVencimiento = $request->fechaVencimiento ? $request->fechaVencimiento : date('Y-m-d');
             $Cuenta->tipoDocumento = $request->tipo_de_comprobante; 
             $Cuenta->serie = $serie; 
             $Cuenta->numero = $numeroComprobante; 
@@ -907,7 +907,7 @@ class CuentaController extends Controller
                 "cliente_email"                     => $request->correo=="" ? "" : $request->correo,
                 "cliente_email_1"                   => 'marthasifuentes@cclam.org.pe',
                 "fecha_de_emision"                  => $request->fechaEmision, //date('d-m-Y'),
-                "fecha_de_vencimiento"              => $request->fechaVencimiento, //date('d-m-Y'),
+                "fecha_de_vencimiento"              => $request->fechaVencimiento ? $request->fechaVencimiento : date('Y-m-d'), //date('d-m-Y'),
                 "moneda"                            => "1",
                 "porcentaje_de_igv"                 => "18.00",
                 "total_gravada"                     => 0,
@@ -922,8 +922,24 @@ class CuentaController extends Controller
                 "documento_que_se_modifica_serie"   => $request->docModificar["serie"] ? $request->docModificar["serie"] : "",
                 "documento_que_se_modifica_numero"  => $request->docModificar["numero"] ? $request->docModificar["numero"] : "",
                 "tipo_de_nota_de_credito"           => $request->docModificar["tipo"] ? 1 : "",
-                "items" => $items
+                "items" => $items,
             ];
+            
+            if( $request->tipo_de_comprobante!=3){
+                if($request->pagado!=2){
+                    $venta_al_credito[]=[
+                        "cuota" => 1,
+                        "fecha_de_pago" => $request->fechaVencimiento,
+                        "importe" => $acumuladoFinal,
+                    ];
+                    $comprobante_param["medio_de_pago"]="CREDITO";
+                    $comprobante_param["condiciones_de_pago"]="CRÉDITO AL ".$request->fechaVencimiento;
+                    $comprobante_param["venta_al_credito"]=$venta_al_credito;
+                }else{
+                    $comprobante_param["medio_de_pago"]="CONTADO";
+                    $comprobante_param["condiciones_de_pago"]="CONTADO";
+                }
+            }
 
             /*Nubefact*/
                 try {

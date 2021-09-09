@@ -135,6 +135,8 @@ Route::group([
     Route::post('/cliente/list', 'ClienteController@list');
     Route::post('/billsexport108', 'CajaController@export');
     Route::post('/billsdetailexport108', 'CajaController@exportDetailBills');
+    Route::post('/listPendings108', 'CajaController@listPendings');
+    
 
     Route::post('/rcList', 'ReservaConceptoController@list');
     Route::post('/rcListWeek', 'ReservaConceptoController@listWeek');

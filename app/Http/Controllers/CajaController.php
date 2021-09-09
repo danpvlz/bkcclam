@@ -143,6 +143,34 @@ class CajaController extends Controller
             'anulado' => ROUND(intval($cuentas[0]->anulado),2),
         ], 200);
     }
+
+    public function listPendings(Request $request)
+    {
+        $request->validate([
+            'since' => 'date',
+            'until' => 'date',
+            'status' => 'integer',
+            'number' => 'string',
+            'idCliente' => 'integer'
+        ]);
+
+        $first= Cuenta::join('Cliente', 'Cliente.idCliente', '=', 'Cuenta.idAdquiriente')
+        ->select(
+            'Cuenta.idCuenta', 
+            'Cuenta.fechaEmision', 
+            \DB::raw('IF(Cuenta.tipoDocumento=1, "F",  IF(Cuenta.tipoDocumento=2, "B",  "NC")) as tipo'),
+            \DB::raw('CONCAT(Cuenta.serie,"-",Cuenta.numero) as serieNumero'),
+            'Cliente.denominacion', 
+            'Cuenta.total', 
+            'Cuenta.estado',
+            'Cuenta.fechaVencimiento',
+            'Cuenta.observaciones'
+        )->where('Cuenta.serie','like','%108')->where('Cuenta.estado','=','1')->whereIn('Cuenta.tipoDocumento',[1,2])->whereNotNull('Cuenta.fechaVencimiento')->orderBy('Cuenta.fechaVencimiento','asc');
+
+        return CajaResourse::collection(
+            $first->orderBy('idCuenta', 'desc')->paginate(10)
+        );
+    }
     
     public function listBills(Request $request)
     {
@@ -270,7 +298,7 @@ class CajaController extends Controller
             //CUENTA
                 $Cuenta = new Cuenta();
                 $Cuenta->fechaEmision = $request->fechaEmision; 
-                $Cuenta->fechaVencimiento = $request->fechaVencimiento;
+                $Cuenta->fechaVencimiento = $request->fechaVencimiento ? $request->fechaVencimiento : date('Y-m-d');
                 $Cuenta->tipoDocumento = $request->tipo_de_comprobante; 
                 $Cuenta->serie = $serie; 
                 $Cuenta->numero = $numeroComprobante; 
@@ -388,7 +416,7 @@ class CajaController extends Controller
                 "cliente_direccion"                 => $ClienteSearched->direccion ? $ClienteSearched->direccion : "-",
                 "cliente_email"                     => $request->correo ? $request->correo : "",
                 "fecha_de_emision"                  => date('d-m-Y'),
-                "fecha_de_vencimiento"              => $request->fechaVencimiento,
+                "fecha_de_vencimiento"              => $request->fechaVencimiento ? $request->fechaVencimiento : date('Y-m-d'),
                 "moneda"                            => $Cuenta->moneda,
                 "porcentaje_de_igv"                 => "18.00",
                 "total_gravada"                     => $gravadaAcumulado ? $gravadaAcumulado : "",
@@ -405,6 +433,23 @@ class CajaController extends Controller
                 "tipo_de_nota_de_credito"           => $request->docModificar["tipo"] ? 1 : "",
                 "items" => $itemsNubefact
             ];
+            
+            
+            if( $request->tipo_de_comprobante!=3){
+                if($request->pagado!=2){
+                    $venta_al_credito[]=[
+                        "cuota" => 1,
+                        "fecha_de_pago" => $request->fechaVencimiento,
+                        "importe" => $totalAcumulado,
+                    ];
+                    $comprobante_param["medio_de_pago"]="CREDITO";
+                    $comprobante_param["condiciones_de_pago"]="CRÉDITO AL ".$request->fechaVencimiento;
+                    $comprobante_param["venta_al_credito"]=$venta_al_credito;
+                }else{
+                    $comprobante_param["medio_de_pago"]="CONTADO";
+                    $comprobante_param["condiciones_de_pago"]="CONTADO";
+                }
+            }
             
             try {
                 $client = new \GuzzleHttp\Client();
@@ -456,7 +501,6 @@ class CajaController extends Controller
             $request->validate([
                 'idCliente' => 'required|integer',
                 'fechaEmision' => 'required',
-                'fechaVencimiento' => 'required',
                 'correo' => 'nullable',
                 'docModificar' => 'nullable',
                 'items' => 'required',

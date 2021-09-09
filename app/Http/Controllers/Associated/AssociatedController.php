@@ -920,7 +920,7 @@ class AssociatedController extends Controller
                     $adicional->email && $emails[]=$adicional->email;
                 }
             }else{
-                $persona = Persona::where('idPersona',$Associated->idAsociado)->first();
+                $persona = Persona::where('idAsociado',$Associated->idAsociado)->first();
                 $persona->correos && $emails[]=$persona->correos;
 
             }
@@ -931,13 +931,13 @@ class AssociatedController extends Controller
             }
         }
 
-        $message=$Associated->estado==0 ? "reincorporado" : $Associated->estado==2 ? "activado" : "dado de baja";
+        $message=$Associated->estado==0 ? "reincorporado" : ($Associated->estado==2 ? "activado" : "dado de baja");
         $this->notify($id,' ha '.$message.' un asociado.','warning',null,2,7);
         $this->notify($id,' ha '.$message.' un asociado.','warning',null,2,3);
         $this->notify($id,' ha '.$message.' un asociado.','warning',null,2,16);
         $this->notify($id,' ha '.$message.' un asociado.','warning',null,2,17);
         \DB::beginTransaction();
-        $Associated->estado =  $Associated->estado==0 ? 1 :  $Associated->estado==2 ? 1 : 0;
+        $Associated->estado =  $Associated->estado==0 ? 1 :  ($Associated->estado==2 ? 1 : 0);
 
         if($Associated->estado==0){
             $Associated->fechaRetiro = date("Y-m-d");
