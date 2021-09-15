@@ -485,11 +485,22 @@ class CuentaController extends Controller
 
         $Pagos = Pago::where('idCuenta',$request->idCuenta)->get();
 
+
+        //CONSULTA NUEBEFACT
+        $nubefactrequest = new \stdClass();
+        $nubefactrequest->tipo_de_comprobante=$Cuenta->tipoDocumento;
+        $nubefactrequest->serie=$Cuenta->serie;
+        $nubefactrequest->numero=$Cuenta->numero;
+        $nubefact = self::getNubefact($nubefactrequest);
+        //CONSULTA NUEBEFACT
+        
         return response()->json([
             'cuenta' => $Cuenta,
             'detalle' => $CuentaDetalle,
             'membresia' => $Membresia,
-            'pagos' => $Pagos
+            'pagos' => $Pagos,
+            'nubefact' => json_decode($nubefact)
+
         ], 200);
     }
     
@@ -502,6 +513,7 @@ class CuentaController extends Controller
         ->join('CuentaDetalle', 'CuentaDetalle.idCuenta', '=', 'Cuenta.idCuenta')
         ->join('Sector', 'Sector.idSector', '=', 'Asociado.idSector')
         ->select(
+            'Sector.idSector',            
             'Sector.descripcion',            
             \DB::raw('
             SUM(IF(Cuenta.estado=2 && Cuenta.tipoDocumento!=3 && Cuenta.fechaFinPago>="'.$since.'" && Cuenta.fechaFinPago<="'.$until.'", CuentaDetalle.total, 0))
@@ -510,9 +522,10 @@ class CuentaController extends Controller
             \DB::raw('SUM(IF(Cuenta.estado!=3 && Cuenta.tipoDocumento!=3  && CuentaDetalle.idConcepto!=69  && Cuenta.fechaEmision>="'.$since.'" && Cuenta.fechaEmision<="'.$until.'",Cuenta.total,0))
             -SUM(IF(Cuenta.estado!=3 && Cuenta.tipoDocumento!=3 && CuentaDetalle.idConcepto=69 && Cuenta.fechaEmision>="'.$since.'" && Cuenta.fechaEmision<="'.$until.'", Cuenta.total, 0)) 
             AS emitidos'),
-            \DB::raw('(Select IFNULL(sum(importeMensual),0) from Asociado aa where aa.idSector=Sector.idSector and aa.estado=1) as meta'),
-            \DB::raw('(Select IFNULL(count(aso.idAsociado),0) from Asociado aso where aso.idSector=Sector.idSector and (aso.estado=1 or aso.estado=3)) as asociados')
+            \DB::raw('(Select IFNULL(sum(importeMensual),0) from Asociado aa where aa.idSector=Sector.idSector and aa.estado=1 AND aa.idAsociado not in ( SELECT idAsociado FROM `Membresia` where estado=2 and year=YEAR(NOW()) and mes=MONTH(NOW()) and TIMESTAMPDIFF(MONTH,updated_at,CURRENT_DATE())>0 )) as meta'),
+            \DB::raw('(Select IFNULL(count(aso.idAsociado),0) from Asociado aso where aso.idSector=Sector.idSector and aso.estado=1 AND aso.idAsociado not in ( SELECT idAsociado FROM `Membresia` where estado=2 and year=YEAR(NOW()) and mes=MONTH(NOW()) and TIMESTAMPDIFF(MONTH,updated_at,CURRENT_DATE())>0 )) as asociados')
         )->where('Cuenta.serie','like','%109')
+        ->where('Sector.idSector','<>','6')
         ->groupBy('Sector.idSector')
         ->groupBy('Sector.descripcion')
         ->groupBy('meta');
@@ -648,6 +661,31 @@ class CuentaController extends Controller
         //
     }
 
+    public static function getNubefact($request) : string{
+        try {
+            $client = new \GuzzleHttp\Client();
+            $request_param = [
+                "operacion" => "consultar_comprobante",
+                "tipo_de_comprobante" => $request->tipo_de_comprobante,
+                "serie" => $request->serie,
+                "numero" => $request->numero
+            ];
+            $request_data = $request_param;
+
+            $response = $client->request('POST', env('APP_NUBEFACT_ROUTE'), [
+                'headers' => [
+                    'Content-type' => 'application/json; charset=utf-8',
+                    'Authorization'     => env('APP_NUBEFACT_KEY_109')
+                ],
+                \GuzzleHttp\RequestOptions::JSON   => $request_data
+            ]);
+            return $response->getBody()->getContents();
+        } catch (Exception $e) {
+            \DB::rollback();
+            throw new Exception($e->getMessage());
+        }
+    }
+
     public function showComprobante(Request $request)
     {
         $request->validate([
@@ -655,25 +693,8 @@ class CuentaController extends Controller
             'serie' => 'required|string',
             'numero' => 'required|integer',
         ]);
-
-        $client = new \GuzzleHttp\Client();
-        $request_param = [
-            "operacion" => "consultar_comprobante",
-            "tipo_de_comprobante" => $request->tipo_de_comprobante,
-            "serie" => $request->serie,
-            "numero" => $request->numero
-        ];
-        $request_data = $request_param;
-
-        $response = $client->request('POST', env('APP_NUBEFACT_ROUTE'), [
-            'headers' => [
-                'Content-type' => 'application/json; charset=utf-8',
-                'Authorization'     => env('APP_NUBEFACT_KEY_109')
-            ],
-            \GuzzleHttp\RequestOptions::JSON   => $request_data
-        ]
-        );
-        return $response->getBody()->getContents();
+        $rpta = self::getNubefact($request);
+        return $rpta;
     }
 
 

@@ -14,9 +14,11 @@ use App\Models\Associated\Promotor;
 use App\Models\Associated\ComiteGremial;
 use App\Models\Associated\Sector;
 use App\Models\Colaborador;
+use App\Models\Associated\HistoriaAsociado;
 
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\AssociatedExport;
+use App\Exports\CoberturaExport;
 
 use App\Mail\Afiliacion;
 use App\Mail\Welcome;
@@ -26,10 +28,8 @@ use App\Helpers\Helper;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 
-
 class AssociatedController extends Controller
 {
-
     public function export(Request $request)
     {
         $request->validate([
@@ -49,6 +49,17 @@ class AssociatedController extends Controller
                 $request->promotor,
                 $request->month
             ), 'associateds.xlsx');
+    }
+
+    public function exportCobertura(Request $request)
+    {
+        $request->validate([
+            'debCollector' => 'integer',
+        ]);   
+        return Excel::download(
+            new CoberturaExport(
+                $request->debCollector,
+            ), 'Meta_Cobertura.xlsx');
     }
     
     public function index()
@@ -145,6 +156,7 @@ class AssociatedController extends Controller
             'Sector.descripcion as cobrador',
             'Asociado.direccionSocial',
             'Asociado.fechaIngreso',
+            'Asociado.fechaRetiro',
             'Promotor.nombresCompletos as promotor',
             'Asociado.codigo',
             \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.fundacion,Persona.fechaNacimiento) as onomastico'),
@@ -441,6 +453,8 @@ class AssociatedController extends Controller
             $this->notify($Asociado->idAsociado,'Se ha registrado una nueva afiliación.','success',null,2,16);
             $this->notify($Asociado->idAsociado,'Se ha registrado una nueva afiliación.','success',null,2,17);
 
+            $this->saveUpdates( $Associated->idAsociado, 'Nuevo asociado', 'Afiliación' );
+
             return response()->json([
                 'message' => 'Afiliación registrada.',
             ], 200);
@@ -666,7 +680,12 @@ class AssociatedController extends Controller
                 }
 
                 if($request->documento_adicional){
-                    $ContactoAdicional = Contacto::where('idContacto',$Empresa->idContactoAdicional)->first();
+                    $checkIfExistsAdicional = Contacto::where('idContacto',$Empresa->idContactoAdicional)->first();
+                    if($checkIfExistsAdicional){
+                        $ContactoAdicional = $checkIfExistsAdicional;
+                    }else{
+                        $ContactoAdicional = new Contacto();
+                    }
                     $ContactoAdicional->nombres = $request->nombres_adicional;
                     $ContactoAdicional->apellidoPaterno = $request->paterno_adicional;
                     $ContactoAdicional->apellidoMaterno = $request->materno_adicional;
@@ -711,7 +730,6 @@ class AssociatedController extends Controller
                     'message' => 'No ha realizado ningún cambio',
                 ], 200);
             }else{
-                
                 $detail = new \stdClass();
                 $detail->id=$id;
                 $detail->asociado=$asociado;
@@ -842,7 +860,12 @@ class AssociatedController extends Controller
                 $Representante->save();
 
                 if($request->documento_adicional){
-                    $ContactoAdicional = Contacto::where('idContacto',$Empresa->idContactoAdicional)->first();
+                    $checkIfExistsAdicional = Contacto::where('idContacto',$Empresa->idContactoAdicional)->first();
+                    if($checkIfExistsAdicional){
+                        $ContactoAdicional = $checkIfExistsAdicional;
+                    }else{
+                        $ContactoAdicional = new Contacto();
+                    }
                     $ContactoAdicional->nombres = $request->nombres_adicional;
                     $ContactoAdicional->apellidoPaterno = $request->paterno_adicional;
                     $ContactoAdicional->apellidoMaterno = $request->materno_adicional;
@@ -854,6 +877,7 @@ class AssociatedController extends Controller
                     $ContactoAdicional->email = $request->correo_adicional;
                     $ContactoAdicional->telefonos = $request->telefono_adicional;
                     $ContactoAdicional->save();
+                    $Empresa->idContactoAdicional = $ContactoAdicional->idContacto;
                 }
                 $Empresa->save();
             }else{
@@ -910,7 +934,9 @@ class AssociatedController extends Controller
             $emails = [];
             if($Associated->tipoAsociado==1){
                 $empresa = Empresa::where('idAsociado',$Associated->idAsociado)->first();
-                $empresa->correos && $emails[]=$empresa->correos;
+                if($empresa->correos){
+                    $emails[]=$empresa->correos;
+                }
                 $representante = Contacto::where('idContacto',$empresa->idRepresentante)->first();
                 if($representante){
                     $representante->email && $emails[]=$representante->email;
@@ -921,21 +947,25 @@ class AssociatedController extends Controller
                 }
             }else{
                 $persona = Persona::where('idAsociado',$Associated->idAsociado)->first();
-                $persona->correos && $emails[]=$persona->correos;
+                if($persona->correos){
+                    $emails[]=$persona->correos;
+                }
 
             }
-                
-            foreach ($emails as $email) {
-                $welcome->receiver = $email;
-                Mail::to($email)->send(new Welcome($welcome));
+            if(count($emails)>0){
+                foreach ($emails as $email) {
+                    $welcome->receiver = $email;
+                    Mail::to($email)->send(new Welcome($welcome));
+                }
             }
         }
 
-        $message=$Associated->estado==0 ? "reincorporado" : ($Associated->estado==2 ? "activado" : "dado de baja");
+        $message=$Associated->estado==0 ? "reincorporado" : ($Associated->estado==2 ? "activado" : "retirado");
         $this->notify($id,' ha '.$message.' un asociado.','warning',null,2,7);
         $this->notify($id,' ha '.$message.' un asociado.','warning',null,2,3);
         $this->notify($id,' ha '.$message.' un asociado.','warning',null,2,16);
         $this->notify($id,' ha '.$message.' un asociado.','warning',null,2,17);
+
         \DB::beginTransaction();
         $Associated->estado =  $Associated->estado==0 ? 1 :  ($Associated->estado==2 ? 1 : 0);
 
@@ -944,8 +974,9 @@ class AssociatedController extends Controller
         }else{
             $Associated->fechaRetiro = null;
         }
-        $Associated->save();
 
+        $Associated->save();
+        $this->saveUpdates( $Associated->idAsociado, 'Cambio de estado', ucfirst($message) );
         \DB::commit();
         return response()->json([
             'message' => 'Asociado ' . $message,
@@ -979,6 +1010,8 @@ class AssociatedController extends Controller
         $this->notify($id,' ha '.$message.' un asociado.','warning',null,2,3);
         $this->notify($id,' ha '.$message.' un asociado.','warning',null,2,16);
         $this->notify($id,' ha '.$message.' un asociado.','warning',null,2,17);
+
+        $this->saveUpdates( $Associated->idAsociado, 'Cambio de estado', ucfirst($message) );
 
         \DB::beginTransaction();
         $Associated->estado =  $Associated->estado==3 ? 1 : 3;
@@ -1407,4 +1440,12 @@ class AssociatedController extends Controller
         );
     }
 
+    public function saveUpdates($idAsociado,$title,$description){
+        $HistoriaAsociado= new HistoriaAsociado();
+        $HistoriaAsociado->idAsociado=$idAsociado;
+        $HistoriaAsociado->idUsuario=auth()->user() ? auth()->user()->idUsuario : 0;
+        $HistoriaAsociado->title=$title;
+        $HistoriaAsociado->description=$description;
+        $HistoriaAsociado->save();
+    }
 }

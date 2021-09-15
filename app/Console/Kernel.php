@@ -4,6 +4,7 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use App\Http\Controllers\Firebase\FirebaseController;
 
 class Kernel extends ConsoleKernel
 {
@@ -242,6 +243,15 @@ class Kernel extends ConsoleKernel
             ->hourly()
             ->runInBackground();
         //KPI VENCIMIENTO
+
+        //AUTOARCHIVAR NOTIFICACIONES
+            $schedule->call(function () {
+                $helper = new FirebaseController;
+                $nubefact = $helper::checkOldNotifications();
+            })
+            ->monthlyOn(1, '01:00')
+            ->runInBackground();
+        //AUTOARCHIVAR NOTIFICACIONES        
     }   
 
     /**

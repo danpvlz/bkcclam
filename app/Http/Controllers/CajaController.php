@@ -21,6 +21,7 @@ use App\Helpers\Helper;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\CajaExport;
 use App\Exports\CajaDetalleExport;
+use App\Http\Controllers\CuentaController;
 
 class CajaController extends Controller
 {
@@ -567,10 +568,20 @@ class CajaController extends Controller
 
         $Pagos = Pago::where('idCuenta',$id)->get();
 
+        //CONSULTA NUEBEFACT
+        $nubefactrequest = new \stdClass();
+        $nubefactrequest->tipo_de_comprobante=$Cuenta->tipoDocumento;
+        $nubefactrequest->serie=$Cuenta->serie;
+        $nubefactrequest->numero=$Cuenta->numero;
+        $helper = new CuentaController;
+        $nubefact = $helper::getNubefact($nubefactrequest);
+        //CONSULTA NUEBEFACT
+
         return response()->json([
             'cuenta' => $Cuenta,
             'detalle' => $CuentaDetalle,
-            'pagos' => $Pagos
+            'pagos' => $Pagos,
+            'nubefact' => json_decode($nubefact)
         ], 200);
     }
 

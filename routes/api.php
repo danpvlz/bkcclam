@@ -86,6 +86,7 @@ Route::group([
     Route::post('/associatedassigncode', 'Associated\AssociatedController@setCodigo');
     Route::post('/associated/indicators', 'Associated\AssociatedController@showIndicators');
     Route::post('/associated/export', 'Associated\AssociatedController@export');
+    Route::post('/associated/exportcobertura', 'Associated\AssociatedController@exportCobertura');
     Route::post('/associatedWeekCalendar', 'Associated\AssociatedController@listWeekCalendar');
     Route::post('/associatedMonthCalendar', 'Associated\AssociatedController@listMonthCalendar');
     
@@ -161,7 +162,6 @@ Route::group([
 
     Route::get('kpicheck', 'AuthController@powerBiPass');
     Route::get('askpermission', 'AuthController@powerBiAskPermission');
-    Route::get('firebase', 'Firebase\FirebaseController@index');
 
     
     Route::post('/pagoList', 'PagoController@list');
@@ -169,6 +169,5 @@ Route::group([
     
     //Searchs
     Route::post('/probando', 'Associated\AssociatedController@probando');
-    
     
 });
