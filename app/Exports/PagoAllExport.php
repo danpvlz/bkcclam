@@ -38,7 +38,6 @@ class PagoAllExport implements WithMultipleSheets
     
     public function sheets(): array
     {
-        if($this->serie==109){
             $sheets = [
                 new PagoExport(
                     $this->serie,
@@ -59,10 +58,7 @@ class PagoAllExport implements WithMultipleSheets
                     2,
                     $this->idAsociado,
                     $this->idCliente
-                )
-            ];
-        }else{
-            $sheets = [
+                ),
                 new PagoExport(
                     $this->serie,
                     $this->operacion,
@@ -94,7 +90,6 @@ class PagoAllExport implements WithMultipleSheets
                     $this->idCliente
                 )
             ];
-        }
 
         return $sheets;
     }

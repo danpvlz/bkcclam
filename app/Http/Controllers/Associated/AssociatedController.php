@@ -440,8 +440,7 @@ class AssociatedController extends Controller
             }
 
             \DB::commit();
-            
-            $emails = ['secretariagerencia@cclam.org.pe', 'gerenciageneral@cclam.org.pe','marthasifuentes@cclam.org.pe','alexgomez@cclam.org.pe','rosabances@cclam.org.pe'];
+            $emails = ['secretariagerencia@cclam.org.pe'];
             
             foreach ($emails as $email) {
                 $afiliacion->receiver = $email;
@@ -449,11 +448,12 @@ class AssociatedController extends Controller
             }
 
             $this->notify($Asociado->idAsociado,'Se ha registrado una nueva afiliación.','success',null,2,7);
+            
             $this->notify($Asociado->idAsociado,'Se ha registrado una nueva afiliación.','success',null,2,3);
             $this->notify($Asociado->idAsociado,'Se ha registrado una nueva afiliación.','success',null,2,16);
             $this->notify($Asociado->idAsociado,'Se ha registrado una nueva afiliación.','success',null,2,17);
 
-            $this->saveUpdates( $Associated->idAsociado, 'Nuevo asociado', 'Afiliación' );
+            $this->saveUpdates( $Asociado->idAsociado, 'Nuevo asociado', 'Afiliación' );
 
             return response()->json([
                 'message' => 'Afiliación registrada.',
