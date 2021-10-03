@@ -14,6 +14,7 @@ class CuentaExport implements FromCollection, WithHeadings
     protected $number;
     protected $idAsociado;
     protected $debCollector;
+    protected $tipocomprob;
     
      function __construct(
         $since,
@@ -21,7 +22,8 @@ class CuentaExport implements FromCollection, WithHeadings
         $status,
         $number,
         $idAsociado,
-        $debCollector
+        $debCollector,
+        $tipocomprob
     ) {
             $this->since = $since;
             $this->until = $until;
@@ -29,6 +31,7 @@ class CuentaExport implements FromCollection, WithHeadings
             $this->number = $number;
             $this->idAsociado = $idAsociado;
             $this->debCollector = $debCollector;
+            $this->tipocomprob = $tipocomprob;
      }
 
     public function headings(): array
@@ -63,6 +66,10 @@ class CuentaExport implements FromCollection, WithHeadings
             if($this->status==2){
                 $first->where('Cuenta.tipoDocumento','<',3);
             }
+        }
+
+        if($this->tipocomprob){
+            $first->where('Cuenta.tipoDocumento','=',$this->tipocomprob);
         }
 
         if($this->number){

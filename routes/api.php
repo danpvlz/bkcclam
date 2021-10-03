@@ -7,10 +7,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('grantpermission/{id}', 'AuthController@powerBiGrantPermission');
 Route::get('denypermission/{id}', 'AuthController@powerBiDenyPermission');
 Route::get('/searchRuc/{ruc}', 'ClienteController@searchRuc');
+Route::post('/pendingmemberships', 'MembresiaController@membresiasPendientes');
 Route::get('/course/{id}', 'FormacionYDesarrollo\CursoController@show');
 Route::post('/externalInscription', 'FormacionYDesarrollo\IncripcionController@externalInscription');
 Route::post('/iziini', 'IziPayController@init');
 Route::post('/ipn', 'IziPayController@ipn');
+Route::post('/listconceptos', 'ConceptoController@listConceptosPublic');
 
 Route::group([
     'prefix' => 'auth'
@@ -114,6 +116,7 @@ Route::group([
     Route::post('/annulment', 'CuentaController@annulmentComprobante');
     Route::post('/pay', 'CuentaController@payComprobante');
     Route::post('/detailbill', 'CuentaController@detailBill');
+    Route::post('/generateNCC', 'CuentaController@generateNC');
     Route::post('/billslistrepeated', 'CuentaController@listRepeated');
     Route::post('/billDashboard', 'CuentaController@loadDashboard');
     Route::get('/toPending/{id}', 'CuentaController@restoreToPending');
@@ -137,6 +140,7 @@ Route::group([
     Route::post('/billsexport108', 'CajaController@export');
     Route::post('/billsdetailexport108', 'CajaController@exportDetailBills');
     Route::post('/listPendings108', 'CajaController@listPendings');
+    Route::post('/generateNCCj', 'CajaController@generateNC');
     
 
     Route::post('/rcList', 'ReservaConceptoController@list');
@@ -168,6 +172,9 @@ Route::group([
     Route::post('/pagosExport', 'PagoController@export');
     
     //Searchs
+    Route::get('/sruc/{ruc}', 'ClienteController@searchRucIntern');
+    Route::get('/sdni/{dni}', 'ClienteController@searchDniIntern');
     Route::post('/probando', 'Associated\AssociatedController@probando');
+    Route::post('/getNextNum', 'CuentaController@getNumComprobante');
     
 });

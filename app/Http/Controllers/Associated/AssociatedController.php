@@ -349,7 +349,7 @@ class AssociatedController extends Controller
                 $Asociado->documento = $Asociado->codigo;
                 $Asociado->fechaIngreso = date("Y-m-d");
                 $Asociado->importeMensual = 75;
-                $Asociado->direccionSocial = strtoupper($request->direccionsocial);
+                $Asociado->direccionSocial = mb_strtoupper($request->direccionsocial);
                 $Asociado->tipoAsociado = $request->tipoasociado;
                 $Asociado->estado = 2;
                 if($request->idPromotor){
@@ -376,22 +376,22 @@ class AssociatedController extends Controller
             if($request->tipoasociado==1){
                 $Empresa = new Empresa();
                 $Empresa->ruc = $request->ruc;
-                $Empresa->razonSocial = strtoupper($request->razonsocial);
-                $Empresa->direccion = strtoupper($request->direccionfiscal);
+                $Empresa->razonSocial = mb_strtoupper($request->razonsocial);
+                $Empresa->direccion = mb_strtoupper($request->direccionfiscal);
                 $Empresa->fundacion = $request->fundacion;
                 $Empresa->actividad = $request->actividad;
                 $Empresa->correos = $request->correo_asociado;
                 $Empresa->telefonos = $request->telefono_asociado;
                 $Empresa->idAsociado = $Asociado->idAsociado;
                 
-                $afiliacion->afiliado = strtoupper($request->razonsocial);
+                $afiliacion->afiliado = mb_strtoupper($request->razonsocial);
                 $afiliacion->documento = $request->ruc;
 
                 $Representante = new Contacto();
-                $Representante->nombres = strtoupper($request->nombres_representante);
-                $Representante->apellidoPaterno = strtoupper($request->paterno_representante);
-                $Representante->apellidoMaterno = strtoupper($request->materno_representante);
-                $Representante->nombreCompleto = strtoupper($request->nombres_representante . " " . $request->paterno_representante . " " . $request->materno_representante);
+                $Representante->nombres = mb_strtoupper($request->nombres_representante);
+                $Representante->apellidoPaterno = mb_strtoupper($request->paterno_representante);
+                $Representante->apellidoMaterno = mb_strtoupper($request->materno_representante);
+                $Representante->nombreCompleto = mb_strtoupper($request->nombres_representante . " " . $request->paterno_representante . " " . $request->materno_representante);
                 $Representante->fechaNacimiento = $request->fechanacimiento_representante;
                 $Representante->tipoDoc = $request->tipodocumento_representante;
                 $Representante->documento = $request->documento_representante;
@@ -404,10 +404,10 @@ class AssociatedController extends Controller
 
                 if($request->documento_adicional){
                     $ContactoAdicional = new Contacto();
-                    $ContactoAdicional->nombres = strtoupper($request->nombres_adicional);
-                    $ContactoAdicional->apellidoPaterno = strtoupper($request->paterno_adicional);
-                    $ContactoAdicional->apellidoMaterno = strtoupper($request->materno_adicional);
-                    $ContactoAdicional->nombreCompleto = strtoupper($request->nombres_adicional . " " . $request->paterno_adicional . " " . $request->materno_adicional);
+                    $ContactoAdicional->nombres = mb_strtoupper($request->nombres_adicional);
+                    $ContactoAdicional->apellidoPaterno = mb_strtoupper($request->paterno_adicional);
+                    $ContactoAdicional->apellidoMaterno = mb_strtoupper($request->materno_adicional);
+                    $ContactoAdicional->nombreCompleto = mb_strtoupper($request->nombres_adicional . " " . $request->paterno_adicional . " " . $request->materno_adicional);
                     $ContactoAdicional->fechaNacimiento = $request->fechanacimiento_adicional;
                     $ContactoAdicional->tipoDoc = $request->tipodocumento_adicional;
                     $ContactoAdicional->documento = $request->documento_adicional;
@@ -422,10 +422,10 @@ class AssociatedController extends Controller
                 $Persona = new Persona();
                 $Persona->tipoDocumento = $request->tipodocumento_persona;
                 $Persona->documento = $request->documento_persona;
-                $Persona->nombresCompletos = strtoupper($request->nombres_persona." ".$request->paterno_persona." ".$request->materno_persona);
-                $Persona->nombres = strtoupper($request->nombres_persona);
-                $Persona->apellidoPaterno = strtoupper($request->paterno_persona);
-                $Persona->apellidoMaterno = strtoupper($request->materno_persona);
+                $Persona->nombresCompletos = mb_strtoupper($request->nombres_persona." ".$request->paterno_persona." ".$request->materno_persona);
+                $Persona->nombres = mb_strtoupper($request->nombres_persona);
+                $Persona->apellidoPaterno = mb_strtoupper($request->paterno_persona);
+                $Persona->apellidoMaterno = mb_strtoupper($request->materno_persona);
                 $Persona->sexo = $request->sexo;
                 $Persona->fechaNacimiento = $request->fechanacimiento_persona;
                 $Persona->direccion = $request->direccionfiscal_persona;
@@ -446,7 +446,7 @@ class AssociatedController extends Controller
                 $afiliacion->receiver = $email;
                 Mail::to($email)->send(new Afiliacion($afiliacion));
             }
-
+/*
             $this->notify($Asociado->idAsociado,'Se ha registrado una nueva afiliación.','success',null,2,7);
             
             $this->notify($Asociado->idAsociado,'Se ha registrado una nueva afiliación.','success',null,2,3);
@@ -454,7 +454,7 @@ class AssociatedController extends Controller
             $this->notify($Asociado->idAsociado,'Se ha registrado una nueva afiliación.','success',null,2,17);
 
             $this->saveUpdates( $Asociado->idAsociado, 'Nuevo asociado', 'Afiliación' );
-
+*/
             return response()->json([
                 'message' => 'Afiliación registrada.',
             ], 200);
@@ -630,7 +630,7 @@ class AssociatedController extends Controller
             //Asociado
                 $Asociado = Associated::find($id);
                 $Asociado->importeMensual = $request->importemensual;
-                $Asociado->direccionSocial = strtoupper($request->direccionsocial);
+                $Asociado->direccionSocial = mb_strtoupper($request->direccionsocial);
                 $Asociado->tipoAsociado = $request->tipoasociado;
                 if($request->idPromotor){
                     $Promotor = Promotor::find($request->idPromotor);
@@ -656,8 +656,8 @@ class AssociatedController extends Controller
                 $asociado=$Empresa->razonSocial.' - '.$request->ruc;
 
                 $Empresa->ruc = $request->ruc;
-                $Empresa->razonSocial = strtoupper($request->razonsocial);
-                $Empresa->direccion = strtoupper($request->direccionfiscal);
+                $Empresa->razonSocial = mb_strtoupper($request->razonsocial);
+                $Empresa->direccion = mb_strtoupper($request->direccionfiscal);
                 $Empresa->fundacion = $request->fundacion;
                 $Empresa->actividad = $request->actividad;
                 $Empresa->actividadSecundaria = $request->actividad_secundaria;
@@ -665,10 +665,10 @@ class AssociatedController extends Controller
                 $Empresa->telefonos = $request->telefono_asociado;
 
                 $Representante = Contacto::where('idContacto',$Empresa->idRepresentante)->first();
-                $Representante->nombres = strtoupper($request->nombres_representante);
-                $Representante->apellidoPaterno = strtoupper($request->paterno_representante);
-                $Representante->apellidoMaterno = strtoupper($request->materno_representante);
-                $Representante->nombreCompleto = strtoupper($request->nombres_representante . " " . $request->paterno_representante . " " . $request->materno_representante);
+                $Representante->nombres = mb_strtoupper($request->nombres_representante);
+                $Representante->apellidoPaterno = mb_strtoupper($request->paterno_representante);
+                $Representante->apellidoMaterno = mb_strtoupper($request->materno_representante);
+                $Representante->nombreCompleto = mb_strtoupper($request->nombres_representante . " " . $request->paterno_representante . " " . $request->materno_representante);
                 $Representante->fechaNacimiento = $request->fechanacimiento_representante;
                 $Representante->tipoDoc = $request->tipodocumento_representante;
                 $Representante->documento = $request->documento_representante;

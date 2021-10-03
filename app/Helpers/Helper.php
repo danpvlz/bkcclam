@@ -145,5 +145,19 @@ class Helper {
         return $body["success"];
     }
 
+    public static function searchPremium($type,$doc){
+        $client = new \GuzzleHttp\Client();
+        $response = $client->request('POST', 'https://ruc.com.pe/api/v1/consultas', [
+            'headers' => [
+                'Content-type' => 'application/json; charset=utf-8',
+            ],
+            \GuzzleHttp\RequestOptions::JSON   => [
+                "token" => 'c5ea8f77-e1ab-4626-8674-8e1f77e064cd-b12e1862-d8c0-45fe-9806-a0aa1de01a77',
+                "$type" => $doc
+            ]
+        ]);
+        $rpta= $response->getBody()->getContents();
+        return json_decode($rpta);
+    }
 
 }

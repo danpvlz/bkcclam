@@ -13,32 +13,35 @@ class CajaExport implements FromCollection, WithHeadings
     protected $status;
     protected $number;
     protected $idCliente;
+    protected $idArea;
     
      function __construct(
         $since,
         $until,
         $status,
         $number,
-        $idCliente
+        $idCliente,
+        $idArea
     ) {
             $this->since = $since;
             $this->until = $until;
             $this->status = $status;
             $this->number = $number;
             $this->idCliente = $idCliente;
+            $this->idArea = $idArea;
      }
 
     public function headings(): array
     {
-        return ["Emision",  "Tipo","Serie-Numero","DNI/RUC", "Cliente", "Total", "Estado", "FechaPago","Anulacion","Observaciones"];
+        return ["Emision",  "Tipo","Serie-Numero","DNI/RUC", "Cliente", "Total", "Estado", "FechaPago","Anulacion","Observaciones","Area"];
     }
     /**
     * @return \Illuminate\Support\Collection
     */
     public function collection()
     {
-        $first= Caja::join('Cliente', 'Cliente.idCliente', '=', 'Cuenta.idAdquiriente')
-        ->select(
+        $first= Caja::
+        select(
             'Cuenta.fechaEmision', 
             \DB::raw('IF(Cuenta.tipoDocumento=1, "F",  IF(Cuenta.tipoDocumento=2, "B",  "NC")) as tipo'),
             \DB::raw('CONCAT(Cuenta.serie,"-",Cuenta.numero) as serieNumero'),
@@ -48,8 +51,29 @@ class CajaExport implements FromCollection, WithHeadings
             'Cuenta.estado',
             'Cuenta.fechaFinPago',
             'Cuenta.fechaAnulacion',
-            'Cuenta.observaciones'
-        )->where('Cuenta.serie','like','%108');
+            'Cuenta.observaciones',
+            \DB::raw('
+            GROUP_CONCAT(DISTINCT Area.nombre
+            ORDER BY Area.nombre DESC SEPARATOR ", ")
+            as areas')
+        )
+        ->join('Cliente', 'Cliente.idCliente', '=', 'Cuenta.idAdquiriente')
+        ->join('CuentaDetalle', 'CuentaDetalle.idCuenta', '=', 'Cuenta.idCuenta')
+        ->join('Concepto', 'Concepto.idConcepto', '=', 'CuentaDetalle.idConcepto')
+        ->join('CategoriaCuenta', 'CategoriaCuenta.idCategoria', '=', 'Concepto.categoriaCuenta')
+        ->join('Area', 'Area.idArea', '=', 'CategoriaCuenta.idArea')
+        ->groupBy('Cuenta.fechaEmision')
+        ->groupBy('Cuenta.tipoDocumento')
+        ->groupBy('Cuenta.serie')
+        ->groupBy('Cuenta.numero')
+        ->groupBy('Cliente.documento')
+        ->groupBy('Cliente.denominacion')
+        ->groupBy('Cuenta.total')
+        ->groupBy('Cuenta.estado')
+        ->groupBy('Cuenta.fechaFinPago')
+        ->groupBy('Cuenta.fechaAnulacion')
+        ->groupBy('Cuenta.observaciones')
+        ->where('Cuenta.serie','like','%108');
 
         if($this->status && $this->status<4){
             $first->where('Cuenta.estado','=',$this->status);
@@ -64,6 +88,10 @@ class CajaExport implements FromCollection, WithHeadings
 
         if($this->idCliente){
             $first->where('Cuenta.idAdquiriente','=',$this->idCliente);
+        }
+
+        if($this->idArea){
+            $first->where('CategoriaCuenta.idArea','=',$this->idArea);
         }
 
         if($this->since || $this->until){
@@ -111,7 +139,7 @@ class CajaExport implements FromCollection, WithHeadings
             });
         }
         
-        return $first->orderBy('idCuenta', 'desc')->get();
+        return $first->orderBy('Cuenta.idCuenta', 'desc')->get();
     }
 }
 

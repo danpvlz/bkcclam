@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Exception;
 use App\Http\Resources\Cliente as ClienteResourse;
 use App\Models\Cliente;
+use App\Helpers\Helper;
 
 class ClienteController extends Controller
 {
@@ -83,10 +84,14 @@ class ClienteController extends Controller
             $Cliente->user_update = auth()->user()->idUsuario;
             $Cliente->save(); 
 
+            $ClienteAdded = Cliente::select(\DB::raw('Cliente.*, IF(tipoDocumento=1,"DNI",IF(tipoDocumento=4,"CARNET DE EXTRANJ.",IF(tipoDocumento=6,"RUC",IF(tipoDocumento=7,"PASAPORTE","-")))) as tipo'))->find($Cliente->idCliente);
+        
+
             \DB::commit();
 
             return response()->json([
                 'message' => 'Cliente registrado',
+                'resclient' => $ClienteAdded
             ], 200);
         
 
@@ -128,6 +133,24 @@ class ClienteController extends Controller
         return $response->getBody()->getContents();
     }
 
+
+    public function searchRucIntern($ruc)
+    {
+        $helper = new Helper;
+        $rpta=$helper::searchPremium('ruc',$ruc);
+        return response()->json([
+            'data' => $rpta,
+        ], 200);
+    }
+
+    public function searchDniIntern($dni)
+    {
+        $helper = new Helper;
+        $rpta=$helper::searchPremium('dni',$dni);
+        return response()->json([
+            'data' => $rpta,
+        ], 200);
+    }
     /**
      * Update the specified resource in storage.
      *

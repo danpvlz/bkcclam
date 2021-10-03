@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Associated\Associated;
+use App\Models\Associated\Empresa;
+use App\Models\Associated\Persona;
 use App\Models\Cuenta;
 use App\Http\Resources\Cuenta as CuentaResourse;
 use App\Models\CuentaDetalle;
@@ -33,7 +35,8 @@ class CuentaController extends Controller
             'status' => 'integer',
             'number' => 'string',
             'idAsociado' => 'integer',
-            'debCollector' => 'integer'
+            'debCollector' => 'integer',
+            'tipocomprob' => 'integer'
         ]);
 
         return Excel::download(
@@ -43,7 +46,8 @@ class CuentaController extends Controller
                 $request->status,
                 $request->number,
                 $request->idAsociado,
-                $request->debCollector
+                $request->debCollector,
+                $request->tipocomprob
             ), 'Cuentas.xlsx');
     }
 
@@ -55,7 +59,8 @@ class CuentaController extends Controller
             'status' => 'integer',
             'number' => 'string',
             'idAsociado' => 'integer',
-            'debCollector' => 'integer'
+            'debCollector' => 'integer',
+            'tipocomprob' => 'integer'
         ]);
 
         return Excel::download(
@@ -65,7 +70,8 @@ class CuentaController extends Controller
                 $request->status,
                 $request->number,
                 $request->idAsociado,
-                $request->debCollector
+                $request->debCollector,
+                $request->tipocomprob
             ), 'DetalleCuentas.xlsx');
     }
 
@@ -213,10 +219,10 @@ class CuentaController extends Controller
         $cobrado=$cobrado->get();
 
         return response()->json([
-            'pendientes' => ROUND(intval($cuentas[0]->pendientes),2),
-            'cobrado' => ROUND(intval($cobrado[0]->cobrado),2),
-            'emitidos' => ROUND(intval($cuentas[0]->emitidos),2),
-            'anulado' => ROUND(intval($anulado[0]->anulado),2),
+            'pendientes' => ROUND($cuentas[0]->pendientes,2),
+            'cobrado' => ROUND($cobrado[0]->cobrado,2),
+            'emitidos' => ROUND($cuentas[0]->emitidos,2),
+            'anulado' => ROUND($anulado[0]->anulado,2),
         ], 200);
     }
 
@@ -226,6 +232,7 @@ class CuentaController extends Controller
             'since' => 'string',
             'until' => 'string',
             'status' => 'integer',
+            'tipocomprob' => 'integer',
             'number' => 'string',
             'idAsociado' => 'integer',
             'debCollector' => 'integer',
@@ -257,6 +264,9 @@ class CuentaController extends Controller
             if($request->status==2){
                 $first->where('Cuenta.tipoDocumento','<',3);
             }
+        }
+        if($request->tipocomprob){
+            $first->where('Cuenta.tipoDocumento','=',$request->tipocomprob);
         }
 
         if($request->number){
@@ -445,6 +455,264 @@ class CuentaController extends Controller
         );
     }
 
+    public function generateNC(Request $request)
+    {
+        $request->validate([
+            'idCuenta' => 'integer',
+            'tiponc' => 'required',
+        ]);
+
+        $foundCuenta= Cuenta::join('Asociado', 'Asociado.idAsociado', '=', 'Cuenta.idAdquiriente')
+        ->leftJoin('Empresa', 'Empresa.idAsociado', '=', 'Asociado.idAsociado')
+        ->leftJoin('Persona', 'Persona.idAsociado', '=', 'Asociado.idAsociado')
+        ->leftJoin('users', 'Cuenta.user_update', '=', 'users.idUsuario')
+        ->leftJoin('Colaborador', 'Colaborador.idColaborador', '=', 'users.idColaborador')
+        ->select(
+            'Asociado.idAsociado', 
+            'Asociado.tipoAsociado', 
+            'Cuenta.fechaEmision', 
+            'Cuenta.fechaVencimiento', 
+            'Cuenta.idCuenta', 
+            'Cuenta.tipoDocumento',
+            'Cuenta.serie', 
+            'Cuenta.numero', 
+            \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.razonSocial,Persona.nombresCompletos) as denominacion'),
+            \DB::raw('IF(Asociado.tipoAsociado=1, 6,Persona.tipoDocumento) as tipoDoc'),
+            \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.ruc,Persona.documento) as documento'),
+            \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.direccion,Persona.direccion) as direccion'),
+            'Cuenta.total', 
+            'Cuenta.estado',
+            \DB::raw('IFNULL(Cuenta.observaciones, "-") as observaciones'),
+            \DB::raw('Cuenta.updated_at as lastUpdate'),
+            \DB::raw('IF(Cuenta.user_update!=0, CONCAT(Colaborador.nombres, " ", Colaborador.apellidoPaterno),"-") as userLastChanged')
+        )->where('idCuenta',$request->idCuenta)->first();
+
+        $numeroComprobante=Cuenta::where('serie','like','%109')->where('tipoDocumento',3)->max('numero')+1;
+
+        $comprobante_param = [
+            "operacion"				            => "generar_comprobante",
+            "tipo_de_comprobante"               => 3, //2=BOLETA/1=FACTURA/3=NC
+            "serie"                             => 'F109',
+            "numero"				            => $numeroComprobante,
+            "sunat_transaction"			        => "1",
+            "cliente_tipo_de_documento"			=> $foundCuenta->tipoDoc,
+            "cliente_numero_de_documento"		=> $foundCuenta->documento,
+            "cliente_email"=> "",
+            "cliente_email_1"=> "",
+            "cliente_email_2"=> "",
+            "fecha_de_emision"=> date('d-m-Y'),
+            "moneda"=> "1",
+            "tipo_de_cambio"=> "",
+            "porcentaje_de_igv"=> "18.00",
+            "descuento_global"=> "",
+            "total_descuento"=> "",
+            "total_anticipo"=> "",
+            "total_inafecta"=> "",
+            "total_gratuita"=> "",
+            "total_otros_cargos"=> "",
+            "percepcion_tipo"=> "",
+            "percepcion_base_imponible"=> "",
+            "total_percepcion"=> "",
+            "total_incluido_percepcion"=> "",
+            "detraccion"=> "false",
+            "observaciones"=> $foundCuenta->observaciones,
+            "documento_que_se_modifica_tipo"=> $foundCuenta->tipoDocumento,
+            "documento_que_se_modifica_serie"=> $foundCuenta->serie,
+            "documento_que_se_modifica_numero"=> $foundCuenta->numero,
+            "tipo_de_nota_de_debito"=> "",
+            "enviar_automaticamente_a_la_sunat"=> "true",
+            "enviar_automaticamente_al_cliente"=> "false",
+            "codigo_unico"=> "",
+            "condiciones_de_pago"=> "",
+            "medio_de_pago"=> "",
+            "placa_vehiculo"=> "",
+            "orden_compra_servicio"=> "",
+            "tabla_personalizada_codigo"=> "",
+            "formato_de_pdf"=> "",
+        ];
+
+        $denominacion=$foundCuenta->denominacion;
+        $direccion=$foundCuenta->direccion;
+        /*CHECK REAL DIRECTION*/
+            if($foundCuenta && $foundCuenta->tipoDoc===6){
+                $helperDoc = new Helper;
+                if($foundCuenta->tipoAsociado===1){
+                    $empedit= Empresa::where('idAsociado', '=', $foundCuenta->idAsociado)->first();
+                    $rpta=$helperDoc::searchPremium('ruc',$empedit->ruc);
+                    $empedit->direccion=$rpta->direccion_completa;
+                    $denominacion=$rpta->nombre_o_razon_social;
+                    $direccion=$rpta->direccion_completa;
+                    $empedit->save();
+                }else{
+                    $peredit= Persona::where('idAsociado', '=', $foundCuenta->idAsociado)->first();
+                    if($peredit->tipoDocumento===6){
+                        $rpta=$helperDoc::searchPremium('ruc',$peredit->documento);
+                        $peredit->direccion=$rpta->direccion_completa;
+                        $denominacion=$rpta->nombre_o_razon_social;
+                        $direccion=$rpta->direccion_completa;
+                        $peredit->save();
+                    }
+                }
+            }
+        /*CHECK REAL DIRECTION*/
+        $comprobante_param['cliente_denominacion']=$denominacion;
+        $comprobante_param['cliente_direccion']=$direccion;
+
+        if($request->tiponc===1){
+            $comprobante_param['fecha_de_vencimiento']=date('d-m-Y');
+            $comprobante_param['tipo_de_nota_de_credito']=1;
+            $items=CuentaDetalle::
+            select(
+                \DB::raw('"ZZ" as unidad_de_medida'),
+                \DB::raw('Concepto.codigo'),
+                'Concepto.descripcion',
+                'CuentaDetalle.cantidad',
+                \DB::raw('(CuentaDetalle.subtotal+CuentaDetalle.descuento)/CuentaDetalle.cantidad as valor_unitario'),
+                \DB::raw('CuentaDetalle.precioUnit as precio_unitario'),
+                'CuentaDetalle.descuento',
+                \DB::raw('CuentaDetalle.subtotal as subtotal'),
+                \DB::raw('IF(CuentaDetalle.tipoIGV=0,1,CuentaDetalle.tipoIGV) as tipo_de_igv'),
+                \DB::raw('CuentaDetalle.IGV as igv'),
+                \DB::raw('CuentaDetalle.total as total'),
+                \DB::raw('"false" as anticipo_regularizacion')
+            )
+            ->join('Concepto','Concepto.idConcepto','CuentaDetalle.idConcepto')
+            ->where('idCuenta',$request->idCuenta)->get();
+
+            // ANULAR CUENTA
+                $anular=Cuenta::find($foundCuenta->idCuenta);
+                $anular->estado=3;
+                $anular->fechaAnulacion=date('Y-m-d');
+                $anular->save();
+
+                Pago::where('idCuenta', $foundCuenta->idCuenta)
+                ->update(['estado' => 0,'user_update'=> auth()->user()->idUsuario]);
+                    
+                $Membresia = Membresia::where('idCuenta', $foundCuenta->idCuenta)
+                ->update(['estado' => 0,'user_update'=> auth()->user()->idUsuario]);
+
+                if($foundCuenta->fechaVencimiento && $foundCuenta->estado==1){
+                    $venta_al_credito = [
+                        "cuota"=> 1,
+                        "fecha_de_pago"=> $foundCuenta->fechaVencimiento,
+                        "importe"=> $foundCuenta->total
+                    ];
+                    $comprobante_param['venta_al_credito']=$venta_al_credito;
+                }
+            // ANULAR CUENTA
+
+        }else{
+            $ndate=date_create($request->newFecha);
+            $newFechaformat=date_format($ndate,"d-m-Y");
+            $comprobante_param['fecha_de_vencimiento']=$newFechaformat;
+            $comprobante_param['tipo_de_nota_de_credito']=13;
+            $items=CuentaDetalle::
+            select(
+                \DB::raw('"ZZ" as unidad_de_medida'),
+                \DB::raw('Concepto.idConcepto as codigo'),
+                'Concepto.descripcion',
+                'CuentaDetalle.cantidad',
+                \DB::raw('"0" as valor_unitario'),
+                \DB::raw('"0" as precio_unitario'),
+                \DB::raw('"0" as subtotal'),
+                \DB::raw('IF(CuentaDetalle.tipoIGV=0,1,CuentaDetalle.tipoIGV) as tipo_de_igv'),
+                \DB::raw('"0" as igv'),
+                \DB::raw('"0" as total'),
+                \DB::raw('"false" as anticipo_regularizacion')
+            )
+            ->join('Concepto','Concepto.idConcepto','CuentaDetalle.idConcepto')
+            ->where('idCuenta',$request->idCuenta)->get();
+
+            $venta_al_credito = [
+                "cuota"=> 1,
+                "fecha_de_pago"=> $newFechaformat,
+                "importe"=> $foundCuenta->total
+            ];
+            $comprobante_param['venta_al_credito']=$venta_al_credito;
+            /*CHANGE FECHA VENC*/
+                $changeFecha=Cuenta::find($foundCuenta->idCuenta);
+                $changeFecha->fechaVencimiento=$request->newFecha;
+                $changeFecha->save();
+            /*CHANGE FECHA VENC*/
+        }
+        $comprobante_param['items']=$items;
+        $totalGravada=0;
+        $totalExonerada=0;
+        $totalIgv=0;
+        $totalDescuento=0;
+        /*SAVE IN BD*/
+            $Cuenta = new Cuenta();
+            $Cuenta->fechaEmision = date('Y-m-d');
+            $Cuenta->fechaVencimiento = $request->newFecha ? $request->newFecha : date('Y-m-d');
+            $Cuenta->tipoDocumento = 3; 
+            $Cuenta->serie = 'F109';
+            $Cuenta->numero = $numeroComprobante; 
+            $Cuenta->idAdquiriente = $foundCuenta->idAsociado;
+            $Cuenta->estado = 2; 
+            $Cuenta->user_create =  auth()->user()->idUsuario; 
+            $Cuenta->user_update =  auth()->user()->idUsuario; 
+            $Cuenta->IGV =$totalIgv; 
+            $Cuenta->subtotal = $totalGravada+$totalExonerada; 
+            $Cuenta->total = $totalGravada+$totalExonerada; 
+            $Cuenta->save();
+            foreach ($items as $key => $item) {
+                $totalDescuento+=$item['descuento'];
+                $totalIgv+=$item['igv'];
+                if($item['tipo_de_igv']===1){
+                    $totalGravada+=$item['total'];
+                }else{
+                    $totalExonerada+=$item['total'];
+                }
+                $Detalle = new CuentaDetalle();
+                $Detalle->idCuenta = $Cuenta->idCuenta; 
+                $Detalle->idConcepto = $item['codigo']; 
+                $Detalle->tipoIGV = $item['tipo_de_igv'];
+                $Detalle->precioUnit =$item['precio_unitario'];
+                $Detalle->cantidad = $item['cantidad'];
+                $Detalle->subtotal = $item['subtotal'];
+                $Detalle->IGV =  $item['igv'];
+                $Detalle->total = $item['total'];
+                $Detalle->user_create =  auth()->user()->idUsuario; 
+                $Detalle->user_update =  auth()->user()->idUsuario; 
+                $Detalle->save(); 
+            }
+            $Cuenta->IGV =$totalIgv; 
+            $Cuenta->subtotal = $totalGravada+$totalExonerada; 
+            $Cuenta->total = $totalGravada+$totalExonerada; 
+            $Cuenta->save();
+            $comprobante_param['total_gravada']=$totalGravada===0 && $request->tiponc===2?"":$totalGravada;
+            $comprobante_param['total_exonerada']=$totalExonerada===0?"":$totalExonerada;
+            $comprobante_param['total_igv']=$totalIgv;
+            $comprobante_param['total_descuento']=$totalDescuento===0?"":$totalDescuento;
+            $comprobante_param['total']=$totalExonerada+$totalGravada;
+        /*SAVE IN BD*/
+        try {
+            $client = new \GuzzleHttp\Client();
+            $response = $client->request('POST', env('APP_NUBEFACT_ROUTE'), [
+                'headers' => [
+                    'Content-type' => 'application/json; charset=utf-8',
+                    'Authorization'     => env('APP_NUBEFACT_KEY_109')
+                ],
+                \GuzzleHttp\RequestOptions::JSON   => $comprobante_param
+            ]);
+        }
+        catch (\GuzzleHttp\Exception\RequestException $e) {
+            \DB::rollback();
+            $response = $e->getResponse();
+            $responseBodyAsString = json_decode($response->getBody()->getContents());
+            if($responseBodyAsString->errors){
+                return response()->json([
+                    'message' => $responseBodyAsString->errors,
+                ], 401);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Nota de crédito generada!',
+            'data' => $comprobante_param
+        ], 200);
+    }
+
     public function detailBill(Request $request)
     {
         $request->validate([
@@ -500,7 +768,6 @@ class CuentaController extends Controller
             'membresia' => $Membresia,
             'pagos' => $Pagos,
             'nubefact' => json_decode($nubefact)
-
         ], 200);
     }
     
@@ -718,18 +985,38 @@ class CuentaController extends Controller
             $items=[];
             $acumuladoFinal=0;
 
+            /*CHECK REAL DIRECTION*/
+            $asoedit= Associated::where('idAsociado',$request->idAsociado)->first();
+            if($asoedit){
+                $helperDoc = new Helper;
+                if($asoedit->tipoAsociado===1){
+                    $empedit= Empresa::where('idAsociado', '=', $asoedit->idAsociado)->first();
+                    $rpta=$helperDoc::searchPremium('ruc',$empedit->ruc);
+                    $empedit->direccion=$rpta->direccion_completa;
+                    $empedit->save();
+                }else{
+                    $peredit= Persona::where('idAsociado', '=', $asoedit->idAsociado)->first();
+                    if($peredit->tipoDocumento===6){
+                        $rpta=$helperDoc::searchPremium('ruc',$peredit->documento);
+                        $peredit->direccion=$rpta->direccion_completa;
+                        $peredit->save();
+                    }
+                }
+            }
+            /*CHECK REAL DIRECTION*/
+
             /*SEARCH ASOCIADO*/
                 $AssociatedSearched= Associated::
                 select(
                     \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.razonSocial,Persona.nombresCompletos) as asociado'),
                     \DB::raw('IF(Asociado.tipoAsociado=1, 6,Persona.tipoDocumento) as tipoDocumento'),
                     \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.ruc,Persona.documento) as documento'),
+                    \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.direccion,Persona.direccion) as direccion'),
                     'Asociado.tipoAsociado',
                     'Asociado.estado',
                     \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.actividad,Persona.actividad) as actividad'),
                     'Asociado.importeMensual',
                     'Asociado.idSector',
-                    'Asociado.direccionSocial',
                     'Asociado.fechaIngreso'
                 )
                 ->leftJoin('Empresa', 'Empresa.idAsociado', '=', 'Asociado.idAsociado')
@@ -879,7 +1166,7 @@ class CuentaController extends Controller
                 $membresia=[
                     "unidad_de_medida"          => "ZZ",
                     "codigo"                    => "70",
-                    "descripcion"               => "PAGO ORDINARIO DE ASOCIADOS " . strtoupper($item['comprobanteLabel']), //
+                    "descripcion"               => "PAGO ORDINARIO DE ASOCIADOS " . mb_strtoupper($item['comprobanteLabel']), //
                     "cantidad"                  => $item['cantidad'], //
                     "valor_unitario"            => $importeMensual, //
                     "precio_unitario"           => $importeMensual, //
@@ -924,7 +1211,7 @@ class CuentaController extends Controller
                 "cliente_tipo_de_documento"		    => $AssociatedSearched->tipoDocumento,
                 "cliente_numero_de_documento"	    => $AssociatedSearched->documento,
                 "cliente_denominacion"              => $AssociatedSearched->asociado,
-                "cliente_direccion"                 => $AssociatedSearched->direccionSocial,
+                "cliente_direccion"                 => $AssociatedSearched->direccion,
                 "cliente_email"                     => $request->correo=="" ? "" : $request->correo,
                 "cliente_email_1"                   => 'marthasifuentes@cclam.org.pe',
                 "fecha_de_emision"                  => $request->fechaEmision, //date('d-m-Y'),
@@ -963,6 +1250,7 @@ class CuentaController extends Controller
             }
 
             /*Nubefact*/
+            
                 try {
                     $client = new \GuzzleHttp\Client();
                     $response = $client->request('POST', env('APP_NUBEFACT_ROUTE'), [
@@ -983,6 +1271,7 @@ class CuentaController extends Controller
                         ], 401);
                     }
                 }
+                
             /*Nubefact*/
 
             \DB::commit();
@@ -1212,5 +1501,10 @@ class CuentaController extends Controller
         return response()->json([
             'message' => 'Cuenta cambiada a pendiente.',
         ], 200);
+    }
+
+    public function getNumComprobante(Request $request){
+        $numeroComprobante=Cuenta::where('serie','like','%'.$request->serie)->where('tipoDocumento',$request->typedoc)->max('numero')+1;
+        return $numeroComprobante;
     }
 }

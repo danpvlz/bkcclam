@@ -9,7 +9,6 @@ use App\Models\Concepto;
 
 class ConceptoController extends Controller
 {
-    
 
     public function filterDataAmbientes(Request $request)
     {
@@ -25,7 +24,6 @@ class ConceptoController extends Controller
             ->orWhere('idConcepto','like', '%'.$request->search."%")
             ->get();
     }
-    
 
     public function filterData(Request $request)
     {
@@ -126,6 +124,28 @@ class ConceptoController extends Controller
             ], 500);
         }
     }
+
+    public function listConceptosPublic(Request $request)
+    {
+        $ConceptList = 
+            Concepto::
+            select(
+                \DB::raw('Concepto.idConcepto as id'),
+                \DB::raw('Area.nombre as area'),
+                \DB::raw('CategoriaCuenta.nombre as subarea'),
+                \DB::raw('descripcion as servicio'),
+                \DB::raw('valorConIGV as precio')
+                )
+            ->join('CategoriaCuenta','Concepto.categoriaCuenta','=','CategoriaCuenta.idCategoria')
+            ->join('Area','Area.idArea','=','CategoriaCuenta.idArea')
+            ->where('Concepto.vigente',1)
+            ->orderBy('Concepto.descripcion','desc');
+            
+        return $ConceptList->get();
+    }
+
+
+
 
     /**
      * Display the specified resource.

@@ -13,19 +13,22 @@ class CajaDetalleExport implements FromCollection, WithHeadings
     protected $status;
     protected $number;
     protected $idCliente;
+    protected $idArea;
     
      function __construct(
         $since,
         $until,
         $status,
         $number,
-        $idCliente
+        $idCliente,
+        $idArea
     ) {
             $this->since = $since;
             $this->until = $until;
             $this->status = $status;
             $this->number = $number;
             $this->idCliente = $idCliente;
+            $this->idArea = $idArea;
      }
 
     public function headings(): array
@@ -86,6 +89,10 @@ class CajaDetalleExport implements FromCollection, WithHeadings
 
         if($this->idCliente){
             $first->where('Cuenta.idAdquiriente','=',$this->idCliente);
+        }
+
+        if($this->idArea){
+            $first->where('CategoriaCuenta.idArea','=',$this->idArea);
         }
 
         if($this->since || $this->until){
