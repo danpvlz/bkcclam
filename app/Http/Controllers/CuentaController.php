@@ -1072,7 +1072,8 @@ class CuentaController extends Controller
             $Cuenta->observaciones = $request->observacion; 
             $Cuenta->IGV = 0; 
             $Cuenta->estado = $request->tipo_de_comprobante==3 ? 2 : $request->pagado; 
-            if($request->pagado==2 || $request->tipo_de_comprobante==3){
+            // if($request->pagado==2 || $request->tipo_de_comprobante==3){
+            if($request->pagado==2){
                 $Cuenta->fechaFinPago = $request->fechaPago; 
             }
             $Cuenta->user_create =  auth()->user()->idUsuario; 

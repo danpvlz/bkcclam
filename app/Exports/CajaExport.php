@@ -48,7 +48,7 @@ class CajaExport implements FromCollection, WithHeadings
             'Cliente.documento', 
             'Cliente.denominacion', 
             'Cuenta.total', 
-            'Cuenta.estado',
+            \DB::raw('IF(Cuenta.estado=1, "Por Cancelar",  IF(Cuenta.estado=2, "Cancelada",  "Anulada"))'),
             'Cuenta.fechaFinPago',
             'Cuenta.fechaAnulacion',
             'Cuenta.observaciones',

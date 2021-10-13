@@ -45,7 +45,7 @@ class FirebaseController extends Controller
                         $folderContenido->contenido = json_encode($subvalue);
                         $folderContenido->save();
                         //ELIMINAR DE FIREBASE
-                            //$database->getReference('notifications/'.$key.'/'.$key2)->remove();
+                            $database->getReference('notifications/'.$key.'/'.$key2)->remove();
                         //ELIMINAR DE FIREBASE
                     }
                 //GUARDAR NOTIFICACIOENS DE MÁS DE UN MES

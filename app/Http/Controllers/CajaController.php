@@ -583,7 +583,8 @@ class CajaController extends Controller
                 $Cuenta->moneda = $request->typeChange;
                 $Cuenta->observaciones = $request->observacion; 
                 $Cuenta->estado = $request->tipo_de_comprobante==3 ? 2 : $request->pagado; 
-                if($request->pagado==2 || $request->tipo_de_comprobante==3){
+                // if($request->pagado==2 || $request->tipo_de_comprobante==3){
+                if($request->pagado==2){
                     $Cuenta->fechaFinPago = $request->fechaEmision; 
                 }
                 $Cuenta->subtotal = 0;
