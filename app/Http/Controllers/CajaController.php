@@ -238,6 +238,11 @@ class CajaController extends Controller
             $first->where('Cuenta.idAdquiriente','=',$request->idCliente);
         }
 
+        $CurrentColaborador = Colaborador::find(auth()->user()->idColaborador);
+        if(auth()->user()->rol === 1 && $CurrentColaborador){
+            $first->where('CategoriaCuenta.idArea','=',$CurrentColaborador->idArea);
+        }
+
         if($request->idArea){
             $first->where('CategoriaCuenta.idArea','=',$request->idArea);
         }

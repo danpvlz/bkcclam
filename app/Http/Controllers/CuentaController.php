@@ -992,12 +992,14 @@ class CuentaController extends Controller
                 if($asoedit->tipoAsociado===1){
                     $empedit= Empresa::where('idAsociado', '=', $asoedit->idAsociado)->first();
                     $rpta=$helperDoc::searchPremium('ruc',$empedit->ruc);
+                    $empedit->razonSocial=$rpta->nombre_o_razon_social;
                     $empedit->direccion=$rpta->direccion_completa;
                     $empedit->save();
                 }else{
                     $peredit= Persona::where('idAsociado', '=', $asoedit->idAsociado)->first();
                     if($peredit->tipoDocumento===6){
                         $rpta=$helperDoc::searchPremium('ruc',$peredit->documento);
+                        $peredit->nombresCompletos=$rpta->nombre_o_razon_social;
                         $peredit->direccion=$rpta->direccion_completa;
                         $peredit->save();
                     }
