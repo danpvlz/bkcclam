@@ -698,7 +698,7 @@ class CajaController extends Controller
                 "cliente_tipo_de_documento"		    => $ClienteSearched->tipoDocumento,
                 "cliente_numero_de_documento"	    => $ClienteSearched->documento,
                 "cliente_denominacion"              => $ClienteSearched->denominacion,
-                "cliente_direccion"                 => $ClienteSearched->direccion ? $ClienteSearched->direccion : "-",
+                "cliente_direccion"                 => $request->tipo_de_comprobante==2 ? "-" : ($ClienteSearched->direccion ? $ClienteSearched->direccion : "-"),
                 "cliente_email"                     => $request->correo ? $request->correo : "",
                 "fecha_de_emision"                  => date('d-m-Y'),
                 "fecha_de_vencimiento"              => $request->fechaVencimiento ? $request->fechaVencimiento : date('Y-m-d'),

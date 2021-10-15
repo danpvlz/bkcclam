@@ -1214,7 +1214,7 @@ class CuentaController extends Controller
                 "cliente_tipo_de_documento"		    => $AssociatedSearched->tipoDocumento,
                 "cliente_numero_de_documento"	    => $AssociatedSearched->documento,
                 "cliente_denominacion"              => $AssociatedSearched->asociado,
-                "cliente_direccion"                 => $AssociatedSearched->direccion,
+                "cliente_direccion"                 => $request->tipo_de_comprobante==2 ? "-" : $AssociatedSearched->direccion,
                 "cliente_email"                     => $request->correo=="" ? "" : $request->correo,
                 "cliente_email_1"                   => 'marthasifuentes@cclam.org.pe',
                 "fecha_de_emision"                  => $request->fechaEmision, //date('d-m-Y'),
