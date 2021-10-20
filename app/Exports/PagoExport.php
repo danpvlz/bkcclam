@@ -72,6 +72,9 @@ class PagoExport implements FromCollection, WithHeadings, WithTitle
             case 5:
                 return 'CRÉDITO';
                 break;
+            case 6:
+                return 'EFECTIVO';
+                break;
             default:
             return 'OTROS';
                 break;
@@ -97,7 +100,7 @@ class PagoExport implements FromCollection, WithHeadings, WithTitle
                 IF(Pago.banco=2, "BBVA",  
                     IF(Pago.banco=3, "BANCOS",  
                         IF(Pago.banco=4, "CONTADO", 
-                            IF(Pago.banco=5, "CRÉDITO", "-")
+                            IF(Pago.banco=5, "CRÉDITO", IF(Pago.banco=6, "EFECTIVO", "-"))
                         )
                     )
                 )

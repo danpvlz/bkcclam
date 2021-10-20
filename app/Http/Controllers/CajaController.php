@@ -761,9 +761,10 @@ class CajaController extends Controller
             
             \DB::commit();
             
-            $helper = new Helper;
-            $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
-            
+            if($request->opcion!=6){
+                $helper = new Helper;
+                $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
+            }
             $rpta = new \stdClass();
             $rpta->message = 'Cuenta registrada!';
             $rpta->idCuenta = $Cuenta->idCuenta;
@@ -920,8 +921,10 @@ class CajaController extends Controller
             $Pago->save();
             \DB::commit();
              
-            $helper = new Helper;
-            $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
+            if($request->opcion!=6){
+                $helper = new Helper;
+                $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
+            }
             
             return response()->json([ 
                 'message' => 'Pago registrado.', 

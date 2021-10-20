@@ -69,7 +69,7 @@ class CajaDetalleExport implements FromCollection, WithHeadings
             ORDER BY Pago.idPago ASC SEPARATOR ",") as fechas'),
             \DB::raw('Cuenta.fechaAnulacion'),
             \DB::raw('
-            GROUP_CONCAT(DISTINCT IF(Pago.banco=1, "BCP",  IF(Pago.banco=2, "BBVA",  "-") ) 
+            GROUP_CONCAT(DISTINCT IF(Pago.banco=1, "BCP",  IF(Pago.banco=2, "BBVA",  IF(Pago.banco=6, "EFECTIVO",  "-")) ) 
             ORDER BY Pago.idPago ASC SEPARATOR ",") as bancos'),
             \DB::raw('Pago.numoperacion'),
             \DB::raw('Pago.numsofdoc'),

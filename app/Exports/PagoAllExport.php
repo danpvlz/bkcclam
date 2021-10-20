@@ -88,6 +88,16 @@ class PagoAllExport implements WithMultipleSheets
                     5,
                     $this->idAsociado,
                     $this->idCliente
+                ),
+                new PagoExport(
+                    $this->serie,
+                    $this->operacion,
+                    $this->sofdoc,
+                    $this->since,
+                    $this->until,
+                    6,
+                    $this->idAsociado,
+                    $this->idCliente
                 )
             ];
 

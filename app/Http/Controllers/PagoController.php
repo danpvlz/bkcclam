@@ -43,7 +43,7 @@ class PagoController extends Controller
                 IF(Pago.banco=2, "BBVA",  
                     IF(Pago.banco=3, "BANCOS",  
                         IF(Pago.banco=4, "CONTADO", 
-                            IF(Pago.banco=5, "CRÉDITO", "-")
+                            IF(Pago.banco=5, "CRÉDITO", IF(Pago.banco=6, "EFECTIVO", "-"))
                         )
                     )
                 )

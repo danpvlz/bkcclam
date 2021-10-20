@@ -1283,8 +1283,10 @@ class CuentaController extends Controller
             
             //MEMBRESÍA
 
-            $helper = new Helper;
-            $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
+            if($request->banco!=6){
+                $helper = new Helper;
+                $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
+            }
             
             return response()->json([
                 'message' => "Cuenta registrada!"
@@ -1416,8 +1418,10 @@ class CuentaController extends Controller
 
         \DB::commit();
 
-        $helper = new Helper;
-        $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
+        if($request->banco!=6){
+            $helper = new Helper;
+            $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
+        }
 
         return response()->json([
             'message' => 'Pago registrado.',
