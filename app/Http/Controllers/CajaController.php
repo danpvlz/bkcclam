@@ -386,6 +386,7 @@ class CajaController extends Controller
             $comprobante_param['tipo_de_nota_de_credito']=1;
             $items=CuentaDetalle::
             select(
+                \DB::raw('Concepto.idConcepto as identificador_interno'),
                 \DB::raw('"ZZ" as unidad_de_medida'),
                 \DB::raw('Concepto.codigo'),
                 'Concepto.descripcion',
@@ -428,8 +429,9 @@ class CajaController extends Controller
             $comprobante_param['tipo_de_nota_de_credito']=13;
             $items=CuentaDetalle::
             select(
+                \DB::raw('Concepto.idConcepto as identificador_interno'),
                 \DB::raw('"ZZ" as unidad_de_medida'),
-                \DB::raw('Concepto.idConcepto as codigo'),
+                \DB::raw('Concepto.codigo'),
                 'Concepto.descripcion',
                 'CuentaDetalle.cantidad',
                 \DB::raw('"0" as valor_unitario'),
@@ -485,7 +487,7 @@ class CajaController extends Controller
                 }
                 $Detalle = new CuentaDetalle();
                 $Detalle->idCuenta = $Cuenta->idCuenta; 
-                $Detalle->idConcepto = $item['codigo']; 
+                $Detalle->idConcepto = $item['identificador_interno']; 
                 $Detalle->tipoIGV = $item['tipo_de_igv'];
                 $Detalle->precioUnit =$item['precio_unitario'];
                 $Detalle->cantidad = $item['cantidad'];
