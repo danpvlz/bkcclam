@@ -36,7 +36,7 @@ class CuentaExport implements FromCollection, WithHeadings
 
     public function headings(): array
     {
-        return ["Emision",  "Tipo","Serie-Numero","RUC/DNI","Asociado", "Estado", "Total", "Cobrador" , "FechaPago","Anulacion"];
+        return ["Emision", "F. Venc" ,"Tipo","Serie-Numero","RUC/DNI","Asociado", "Estado", "Total", "Cobrador" , "FechaPago","Anulacion"];
     }
     /**
     * @return \Illuminate\Support\Collection
@@ -50,6 +50,7 @@ class CuentaExport implements FromCollection, WithHeadings
         ->leftJoin('Persona', 'Persona.idAsociado', '=', 'Asociado.idAsociado')
         ->select(
             'Cuenta.fechaEmision', 
+            'Cuenta.fechaVencimiento', 
             \DB::raw('IF(Cuenta.tipoDocumento=1, "Factura",  IF(Cuenta.tipoDocumento=2, "Boleta",  "Nota de credito"))'),
             \DB::raw('CONCAT(Cuenta.serie,"-",Cuenta.numero) as serieNumero'),
             \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.ruc,Persona.documento) as documento'),

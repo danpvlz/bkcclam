@@ -21,7 +21,8 @@ class CajaExport implements FromCollection, WithHeadings
         $status,
         $number,
         $idCliente,
-        $idArea
+        $idArea,
+        $tipocomprob
     ) {
             $this->since = $since;
             $this->until = $until;
@@ -29,11 +30,12 @@ class CajaExport implements FromCollection, WithHeadings
             $this->number = $number;
             $this->idCliente = $idCliente;
             $this->idArea = $idArea;
+            $this->tipocomprob = $tipocomprob;
      }
 
     public function headings(): array
     {
-        return ["Emision",  "Tipo","Serie-Numero","DNI/RUC", "Cliente", "Total", "Estado", "FechaPago","Anulacion","Observaciones","Area"];
+        return ["Emision", "F. Venc" ,  "Tipo","Serie-Numero","DNI/RUC", "Cliente", "Total", "Estado", "FechaPago","Anulacion","Observaciones","Area"];
     }
     /**
     * @return \Illuminate\Support\Collection
@@ -43,6 +45,7 @@ class CajaExport implements FromCollection, WithHeadings
         $first= Caja::
         select(
             'Cuenta.fechaEmision', 
+            'Cuenta.fechaVencimiento', 
             \DB::raw('IF(Cuenta.tipoDocumento=1, "F",  IF(Cuenta.tipoDocumento=2, "B",  "NC")) as tipo'),
             \DB::raw('CONCAT(Cuenta.serie,"-",Cuenta.numero) as serieNumero'),
             'Cliente.documento', 
@@ -63,6 +66,7 @@ class CajaExport implements FromCollection, WithHeadings
         ->join('CategoriaCuenta', 'CategoriaCuenta.idCategoria', '=', 'Concepto.categoriaCuenta')
         ->join('Area', 'Area.idArea', '=', 'CategoriaCuenta.idArea')
         ->groupBy('Cuenta.fechaEmision')
+        ->groupBy('Cuenta.fechaVencimiento')
         ->groupBy('Cuenta.tipoDocumento')
         ->groupBy('Cuenta.serie')
         ->groupBy('Cuenta.numero')
@@ -80,6 +84,10 @@ class CajaExport implements FromCollection, WithHeadings
             if($this->status==2){
                 $first->where('Cuenta.tipoDocumento','<',3);
             }
+        }
+
+        if($this->tipocomprob){
+            $first->where('Cuenta.tipoDocumento','=',$this->tipocomprob);
         }
 
         if($this->number){

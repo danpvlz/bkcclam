@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('grantpermission/{id}', 'AuthController@powerBiGrantPermission');
 Route::get('denypermission/{id}', 'AuthController@powerBiDenyPermission');
 Route::get('/searchRuc/{ruc}', 'ClienteController@searchRuc');
+Route::get('/sruckap/{ruc}', 'ClienteController@searchRucKAP');
 Route::post('/pendingmemberships', 'MembresiaController@membresiasPendientes');
 Route::get('/course/{id}', 'FormacionYDesarrollo\CursoController@show');
 Route::post('/externalInscription', 'FormacionYDesarrollo\IncripcionController@externalInscription');
@@ -121,6 +122,7 @@ Route::group([
     Route::post('/billDashboard', 'CuentaController@loadDashboard');
     Route::get('/toPending/{id}', 'CuentaController@restoreToPending');
     Route::get('/probandoPay', 'CuentaController@probandoPay');
+    Route::post('/listPendings109', 'CuentaController@listPendings');
     
     
     Route::apiResource('/cliente', 'ClienteController');

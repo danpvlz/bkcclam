@@ -25,6 +25,8 @@ use App\Http\Controllers\CuentaController;
 
 class CajaController extends Controller
 {
+    
+    
 
     public function export(Request $request)
     {
@@ -34,7 +36,8 @@ class CajaController extends Controller
             'status' => 'integer',
             'number' => 'string',
             'idCliente' => 'integer',
-            'idArea' => 'integer'
+            'idArea' => 'integer',
+            'tipocomprob' => 'integer'
         ]);
 
         return Excel::download(
@@ -44,7 +47,8 @@ class CajaController extends Controller
                 $request->status,
                 $request->number,
                 $request->idCliente,
-                $request->idArea
+                $request->idArea,
+                $request->tipocomprob
             ), 'Caja.xlsx');
     }
 
@@ -56,7 +60,8 @@ class CajaController extends Controller
             'status' => 'integer',
             'number' => 'string',
             'idCliente' => 'integer',
-            'idArea' => 'integer'
+            'idArea' => 'integer',
+            'tipocomprob' => 'integer'
         ]);
 
         return Excel::download(
@@ -66,9 +71,11 @@ class CajaController extends Controller
                 $request->status,
                 $request->number,
                 $request->idCliente,
-                $request->idArea
+                $request->idArea,
+                $request->tipocomprob
             ), 'DetalleCaja.xlsx');
     }
+    
     /**
      * Display a listing of the resource.
      *
@@ -185,13 +192,16 @@ class CajaController extends Controller
             'status' => 'integer',
             'number' => 'string',
             'idCliente' => 'integer',
-            'idArea' => 'integer'
+            'idArea' => 'integer',
+            'tipocomprob' => 'integer'
         ]);
 
         $first= Cuenta::
         select(
+            'Cuenta.created_at', 
             'Cuenta.idCuenta', 
             'Cuenta.fechaEmision', 
+            'Cuenta.fechaVencimiento',
             \DB::raw('IF(Cuenta.tipoDocumento=1, "F",  IF(Cuenta.tipoDocumento=2, "B",  "NC")) as tipo'),
             \DB::raw('CONCAT(Cuenta.serie,"-",Cuenta.numero) as serieNumero'),
             'Cliente.denominacion', 
@@ -210,8 +220,10 @@ class CajaController extends Controller
         ->join('Concepto', 'Concepto.idConcepto', '=', 'CuentaDetalle.idConcepto')
         ->join('CategoriaCuenta', 'CategoriaCuenta.idCategoria', '=', 'Concepto.categoriaCuenta')
         ->join('Area', 'Area.idArea', '=', 'CategoriaCuenta.idArea')
+        ->groupBy('Cuenta.created_at')
         ->groupBy('Cuenta.idCuenta')
         ->groupBy('Cuenta.fechaEmision')
+        ->groupBy('Cuenta.fechaVencimiento')
         ->groupBy('Cuenta.tipoDocumento')
         ->groupBy('Cuenta.serie')
         ->groupBy('Cuenta.numero')
@@ -222,6 +234,10 @@ class CajaController extends Controller
         ->groupBy('Cuenta.fechaAnulacion')
         ->groupBy('Cuenta.observaciones')
         ->where('Cuenta.serie','like','%108');
+
+        if($request->tipocomprob){
+            $first->where('Cuenta.tipoDocumento','=',$request->tipocomprob);
+        }
 
         if($request->status && $request->status<4){
             $first->where('Cuenta.estado','=',$request->status);
@@ -293,255 +309,16 @@ class CajaController extends Controller
         }
 
         return CajaResourse::collection(
-            $first->orderBy('idCuenta', 'desc')->paginate(10)
+            $first->orderBy('created_at', 'desc')->orderBy('idCuenta', 'desc')->paginate(10)
         );
     }
-
-    public function generateNC(Request $request)
-    {
-        $request->validate([
-            'idCuenta' => 'integer',
-            'tiponc' => 'required',
-        ]);
-        $foundCuenta= Cuenta::join('Cliente', 'Cliente.idCliente', '=', 'Cuenta.idAdquiriente')
-        ->select(
-            'Cliente.idCliente',
-            'Cuenta.tipoDocumento',
-            \DB::raw('Cliente.tipoDocumento as tipoDoc'),
-            'Cliente.documento',
-            'Cuenta.fechaEmision', 
-            'Cuenta.fechaVencimiento', 
-            'Cuenta.idCuenta', 
-            'Cuenta.serie', 
-            'Cuenta.numero', 
-            'Cliente.denominacion',
-            'Cliente.direccion',
-            'Cuenta.total', 
-            'Cuenta.estado',
-            \DB::raw('IFNULL(Cuenta.observaciones, "-") as observaciones')
-        )->where('Cuenta.idCuenta',$request->idCuenta)->first();
-
-        $numeroComprobante=Cuenta::where('serie','like','%108')->where('tipoDocumento',3)->max('numero')+1;
-
-        $comprobante_param = [
-            "operacion"				            => "generar_comprobante",
-            "tipo_de_comprobante"               => 3, //2=BOLETA/1=FACTURA/3=NC
-            "serie"                             => 'F108',
-            "numero"				            => $numeroComprobante,
-            "sunat_transaction"			        => "1",
-            "cliente_tipo_de_documento"			=> $foundCuenta->tipoDoc,
-            "cliente_numero_de_documento"		=> $foundCuenta->documento,
-            "cliente_email"=> "",
-            "cliente_email_1"=> "",
-            "cliente_email_2"=> "",
-            "fecha_de_emision"=> date('d-m-Y'),
-            "moneda"=> "1",
-            "tipo_de_cambio"=> "",
-            "porcentaje_de_igv"=> "18.00",
-            "descuento_global"=> "",
-            "total_descuento"=> "",
-            "total_anticipo"=> "",
-            "total_inafecta"=> "",
-            "total_gratuita"=> "",
-            "total_otros_cargos"=> "",
-            "percepcion_tipo"=> "",
-            "percepcion_base_imponible"=> "",
-            "total_percepcion"=> "",
-            "total_incluido_percepcion"=> "",
-            "detraccion"=> "false",
-            "observaciones"=> $foundCuenta->observaciones,
-            "documento_que_se_modifica_tipo"=> $foundCuenta->tipoDocumento,
-            "documento_que_se_modifica_serie"=> $foundCuenta->serie,
-            "documento_que_se_modifica_numero"=> $foundCuenta->numero,
-            "tipo_de_nota_de_debito"=> "",
-            "enviar_automaticamente_a_la_sunat"=> "true",
-            "enviar_automaticamente_al_cliente"=> "false",
-            "codigo_unico"=> "",
-            "condiciones_de_pago"=> "",
-            "medio_de_pago"=> "",
-            "placa_vehiculo"=> "",
-            "orden_compra_servicio"=> "",
-            "tabla_personalizada_codigo"=> "",
-            "formato_de_pdf"=> "",
-        ];
-
-        $denominacion=$foundCuenta->denominacion;
-        $direccion=$foundCuenta->direccion;
-        /*CHECK REAL DIRECTION*/
-            $clientedit= Cliente::where('idCliente',$foundCuenta->idCliente)->first();
-            if($clientedit && $clientedit->tipoDocumento===6){
-                $helperDoc = new Helper;
-                $rpta=$helperDoc::searchPremium('ruc',$clientedit->documento);
-                $clientedit->direccion=$rpta->direccion_completa;
-                $denominacion=$rpta->nombre_o_razon_social;
-                $direccion=$rpta->direccion_completa;
-                $clientedit->save();
-            }
-        /*CHECK REAL DIRECTION*/
-        $comprobante_param['cliente_denominacion']=$denominacion;
-        $comprobante_param['cliente_direccion']=$direccion;
-
-        if($request->tiponc===1){
-            $comprobante_param['fecha_de_vencimiento']=date('d-m-Y');
-            $comprobante_param['tipo_de_nota_de_credito']=1;
-            $items=CuentaDetalle::
-            select(
-                \DB::raw('Concepto.idConcepto as identificador_interno'),
-                \DB::raw('"ZZ" as unidad_de_medida'),
-                \DB::raw('Concepto.codigo'),
-                'Concepto.descripcion',
-                'CuentaDetalle.cantidad',
-                \DB::raw('(CuentaDetalle.subtotal+CuentaDetalle.descuento)/CuentaDetalle.cantidad as valor_unitario'),
-                \DB::raw('CuentaDetalle.precioUnit as precio_unitario'),
-                'CuentaDetalle.descuento',
-                \DB::raw('CuentaDetalle.subtotal as subtotal'),
-                \DB::raw('IF(CuentaDetalle.tipoIGV=0,1,CuentaDetalle.tipoIGV) as tipo_de_igv'),
-                \DB::raw('CuentaDetalle.IGV as igv'),
-                \DB::raw('CuentaDetalle.total as total'),
-                \DB::raw('"false" as anticipo_regularizacion')
-            )
-            ->join('Concepto','Concepto.idConcepto','CuentaDetalle.idConcepto')
-            ->where('idCuenta',$request->idCuenta)->get();
-
-            // ANULAR CUENTA
-                $anular=Cuenta::find($foundCuenta->idCuenta);
-                $anular->estado=3;
-                $anular->fechaAnulacion=date('Y-m-d');
-                $anular->save();
-
-                Pago::where('idCuenta', $foundCuenta->idCuenta)
-                ->update(['estado' => 0,'user_update'=> auth()->user()->idUsuario]);
-
-                if($foundCuenta->fechaVencimiento && $foundCuenta->estado==1){
-                    $venta_al_credito = [
-                        "cuota"=> 1,
-                        "fecha_de_pago"=> $foundCuenta->fechaVencimiento,
-                        "importe"=> $foundCuenta->total
-                    ];
-                    $comprobante_param['venta_al_credito']=$venta_al_credito;
-                }
-            // ANULAR CUENTA
-
-        }else{
-            $ndate=date_create($request->newFecha);
-            $newFechaformat=date_format($ndate,"d-m-Y");
-            $comprobante_param['fecha_de_vencimiento']=$newFechaformat;
-            $comprobante_param['tipo_de_nota_de_credito']=13;
-            $items=CuentaDetalle::
-            select(
-                \DB::raw('Concepto.idConcepto as identificador_interno'),
-                \DB::raw('"ZZ" as unidad_de_medida'),
-                \DB::raw('Concepto.codigo'),
-                'Concepto.descripcion',
-                'CuentaDetalle.cantidad',
-                \DB::raw('"0" as valor_unitario'),
-                \DB::raw('"0" as precio_unitario'),
-                \DB::raw('"0" as subtotal'),
-                \DB::raw('IF(CuentaDetalle.tipoIGV=0,1,CuentaDetalle.tipoIGV) as tipo_de_igv'),
-                \DB::raw('"0" as igv'),
-                \DB::raw('"0" as total'),
-                \DB::raw('"false" as anticipo_regularizacion')
-            )
-            ->join('Concepto','Concepto.idConcepto','CuentaDetalle.idConcepto')
-            ->where('idCuenta',$request->idCuenta)->get();
-
-            $venta_al_credito = [
-                "cuota"=> 1,
-                "fecha_de_pago"=> $newFechaformat,
-                "importe"=> $foundCuenta->total
-            ];
-            $comprobante_param['venta_al_credito']=$venta_al_credito;
-            /*CHANGE FECHA VENC*/
-                $changeFecha=Cuenta::find($foundCuenta->idCuenta);
-                $changeFecha->fechaVencimiento=$request->newFecha;
-                $changeFecha->save();
-            /*CHANGE FECHA VENC*/
-        }
-        $comprobante_param['items']=$items;
-        $totalGravada=0;
-        $totalExonerada=0;
-        $totalIgv=0;
-        $totalDescuento=0;
-        /*SAVE IN BD*/
-            $Cuenta = new Cuenta();
-            $Cuenta->fechaEmision = date('Y-m-d');
-            $Cuenta->fechaVencimiento = $request->newFecha ? $request->newFecha : date('Y-m-d');
-            $Cuenta->tipoDocumento = 3; 
-            $Cuenta->serie = 'F108';
-            $Cuenta->numero = $numeroComprobante; 
-            $Cuenta->idAdquiriente = $foundCuenta->idCliente;
-            $Cuenta->estado = 2; 
-            $Cuenta->user_create =  auth()->user()->idUsuario; 
-            $Cuenta->user_update =  auth()->user()->idUsuario; 
-            $Cuenta->IGV =$totalIgv; 
-            $Cuenta->subtotal = $totalGravada+$totalExonerada; 
-            $Cuenta->total = $totalGravada+$totalExonerada; 
-            $Cuenta->save();
-            foreach ($items as $key => $item) {
-                $totalDescuento+=$item['descuento'];
-                $totalIgv+=$item['igv'];
-                if($item['tipo_de_igv']===1){
-                    $totalGravada+=$item['total'];
-                }else{
-                    $totalExonerada+=$item['total'];
-                }
-                $Detalle = new CuentaDetalle();
-                $Detalle->idCuenta = $Cuenta->idCuenta; 
-                $Detalle->idConcepto = $item['identificador_interno']; 
-                $Detalle->tipoIGV = $item['tipo_de_igv'];
-                $Detalle->precioUnit =$item['precio_unitario'];
-                $Detalle->cantidad = $item['cantidad'];
-                $Detalle->subtotal = $item['subtotal'];
-                $Detalle->IGV =  $item['igv'];
-                $Detalle->total = $item['total'];
-                $Detalle->user_create =  auth()->user()->idUsuario; 
-                $Detalle->user_update =  auth()->user()->idUsuario; 
-                $Detalle->save(); 
-            }
-            $Cuenta->IGV =$totalIgv; 
-            $Cuenta->subtotal = $totalGravada+$totalExonerada; 
-            $Cuenta->total = $totalGravada+$totalExonerada; 
-            $Cuenta->save();
-            $comprobante_param['total_gravada']=$totalGravada===0 && $request->tiponc===2?"":$totalGravada;
-            $comprobante_param['total_exonerada']=$totalExonerada===0?"":$totalExonerada;
-            $comprobante_param['total_igv']=$totalIgv;
-            $comprobante_param['total_descuento']=$totalDescuento===0?"":$totalDescuento;
-            $comprobante_param['total']=$totalExonerada+$totalGravada;
-        /*SAVE IN BD*/
-        try {
-            $client = new \GuzzleHttp\Client();
-            $response = $client->request('POST', env('APP_NUBEFACT_ROUTE'), [
-                'headers' => [
-                    'Content-type' => 'application/json; charset=utf-8',
-                    'Authorization'     => env('APP_NUBEFACT_KEY_108')
-                ],
-                \GuzzleHttp\RequestOptions::JSON   => $comprobante_param
-            ]);
-        }
-        catch (\GuzzleHttp\Exception\RequestException $e) {
-            \DB::rollback();
-            $response = $e->getResponse();
-            $responseBodyAsString = json_decode($response->getBody()->getContents());
-            if($responseBodyAsString->errors){
-                return response()->json([
-                    'message' => $responseBodyAsString->errors,
-                ], 401);
-            }
-        }
-
-        return response()->json([
-            'message' => 'Nota de crédito generada!',
-            'data' => $comprobante_param
-        ], 200);
-    }
-
-
+    
     public static function saveCajaCuenta($request) : string{
         
         try {
             /*CHECK REAL DIRECTION*/
             $clientedit= Cliente::where('idCliente',$request->idCliente)->first();
-            if($clientedit && $clientedit->tipoDocumento===6){
+            if($clientedit && $clientedit->direccionEstatica==0 && $clientedit->tipoDocumento===6){
                 $helperDoc = new Helper;
                 $rpta=$helperDoc::searchPremium('ruc',$clientedit->documento);
                 $clientedit->direccion=$rpta->direccion_completa;
@@ -677,6 +454,16 @@ class CajaController extends Controller
 
             //PAGO
                 if($request->pagado==2 && $totalAcumulado>0 && $request->tipo_de_comprobante!=3){
+                    if($request->opcion!=6){
+                        $helper = new Helper;
+                        $checkrpta=$helper::checkPayInfoThrowMessage($request->numoperacion,$totalAcumulado,$request->montoPaid);
+                        if($checkrpta){
+                            $rpta = new \stdClass();
+                            $rpta->message = $checkrpta;
+                            $rpta->error = true;
+                            return json_encode($rpta);
+                        }
+                    }
                     $Pago = new Pago();
                     $Pago->idCuenta = $Cuenta->idCuenta;
                     $Pago->monto = $totalAcumulado; 
@@ -765,6 +552,7 @@ class CajaController extends Controller
                 $helper = new Helper;
                 $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
             }
+            
             $rpta = new \stdClass();
             $rpta->message = 'Cuenta registrada!';
             $rpta->idCuenta = $Cuenta->idCuenta;
@@ -800,6 +588,13 @@ class CajaController extends Controller
             ]);
             
             $rpta = self::saveCajaCuenta($request);
+            $jsonRpta=json_decode($rpta);
+            
+            if($jsonRpta->error){
+                return response()->json([
+                    'message' => $jsonRpta->message,
+                ],500);
+            }
             
             return response()->json([
                 'message' => json_decode($rpta)->message
@@ -895,6 +690,17 @@ class CajaController extends Controller
             "numsofdoc" => 'nullable', ]); 
 
             \DB::beginTransaction(); 
+
+            if($request->opcion!=6){
+                $helper = new Helper;
+                $rpta=$helper::checkPayInfoThrowMessage($request->numoperacion,$request->monto,$request->montoPaid);
+                if($rpta){
+                    return response()->json([
+                        'message' => $rpta,
+                    ],500);
+                }
+            }
+            
             $Cuenta = Cuenta::find($request->idCuenta); 
             $pagadoPagos = Pago::select(\DB::raw('SUM(monto) as pagado'))->where('idCuenta',$request->idCuenta)->first()->pagado; 
             $checkp=ROUND($pagadoPagos+$request->monto,2);
@@ -920,11 +726,11 @@ class CajaController extends Controller
             } 
             $Pago->save();
             \DB::commit();
-             
+            /*
             if($request->opcion!=6){
                 $helper = new Helper;
                 $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
-            }
+            }*/
             
             return response()->json([ 
                 'message' => 'Pago registrado.', 
@@ -936,7 +742,7 @@ class CajaController extends Controller
             ], 500);
         } 
     }
-
+    
     /**
      * Remove the specified resource from storage.
      *
@@ -1175,6 +981,245 @@ class CajaController extends Controller
             'conceptos' =>$conceptos,
             'lineEmitido' =>$lineGraphEmitido,
             'lineCobrado' =>$lineGraphCobrado,
+        ], 200);
+    }
+    public function generateNC(Request $request)
+    {
+        $request->validate([
+            'idCuenta' => 'integer',
+            'tiponc' => 'required',
+        ]);
+        $foundCuenta= Cuenta::join('Cliente', 'Cliente.idCliente', '=', 'Cuenta.idAdquiriente')
+        ->select(
+            'Cliente.idCliente',
+            'Cuenta.tipoDocumento',
+            \DB::raw('Cliente.tipoDocumento as tipoDoc'),
+            'Cliente.documento',
+            'Cuenta.fechaEmision', 
+            'Cuenta.fechaVencimiento', 
+            'Cuenta.idCuenta', 
+            'Cuenta.serie', 
+            'Cuenta.numero', 
+            'Cliente.denominacion',
+            'Cliente.direccion',
+            'Cuenta.total', 
+            'Cuenta.estado',
+            \DB::raw('IFNULL(Cuenta.observaciones, "-") as observaciones')
+        )->where('Cuenta.idCuenta',$request->idCuenta)->first();
+
+        $serieOld = $foundCuenta->tipoDocumento == 1 ? "F108" : "B108";
+        $numeroComprobante=Cuenta::where('serie','like',$serieOld)->where('tipoDocumento',3)->max('numero')+1;
+
+        $comprobante_param = [
+            "operacion"				            => "generar_comprobante",
+            "tipo_de_comprobante"               => 3, //2=BOLETA/1=FACTURA/3=NC
+            "serie"                             => $serieOld,
+            "numero"				            => $numeroComprobante,
+            "sunat_transaction"			        => "1",
+            "cliente_tipo_de_documento"			=> $foundCuenta->tipoDoc,
+            "cliente_numero_de_documento"		=> $foundCuenta->documento,
+            "cliente_email"=> "",
+            "cliente_email_1"=> "",
+            "cliente_email_2"=> "",
+            "fecha_de_emision"=> date('d-m-Y'),
+            "moneda"=> "1",
+            "tipo_de_cambio"=> "",
+            "porcentaje_de_igv"=> "18.00",
+            "descuento_global"=> "",
+            "total_descuento"=> "",
+            "total_anticipo"=> "",
+            "total_inafecta"=> "",
+            "total_gratuita"=> "",
+            "total_otros_cargos"=> "",
+            "percepcion_tipo"=> "",
+            "percepcion_base_imponible"=> "",
+            "total_percepcion"=> "",
+            "total_incluido_percepcion"=> "",
+            "detraccion"=> "false",
+            "observaciones"=> $foundCuenta->observaciones,
+            "documento_que_se_modifica_tipo"=> $foundCuenta->tipoDocumento,
+            "documento_que_se_modifica_serie"=> $foundCuenta->serie,
+            "documento_que_se_modifica_numero"=> $foundCuenta->numero,
+            "tipo_de_nota_de_debito"=> "",
+            "enviar_automaticamente_a_la_sunat"=> "true",
+            "enviar_automaticamente_al_cliente"=> "false",
+            "codigo_unico"=> "",
+            "condiciones_de_pago"=> "",
+            "medio_de_pago"=> "",
+            "placa_vehiculo"=> "",
+            "orden_compra_servicio"=> "",
+            "tabla_personalizada_codigo"=> "",
+            "formato_de_pdf"=> "",
+        ];
+
+        $denominacion=$foundCuenta->denominacion;
+        $direccion=$foundCuenta->direccion;
+        /*CHECK REAL DIRECTION*/
+            $clientedit= Cliente::where('idCliente',$foundCuenta->idCliente)->first();
+            if($clientedit && $clientedit->tipoDocumento===6){
+                $helperDoc = new Helper;
+                $rpta=$helperDoc::searchPremium('ruc',$clientedit->documento);
+                $clientedit->direccion=$rpta->direccion_completa;
+                $denominacion=$rpta->nombre_o_razon_social;
+                $direccion=$rpta->direccion_completa;
+                $clientedit->save();
+            }
+        /*CHECK REAL DIRECTION*/
+        $comprobante_param['cliente_denominacion']=$denominacion;
+        $comprobante_param['cliente_direccion']=$direccion;
+
+        if($request->tiponc===1){
+            $comprobante_param['fecha_de_vencimiento']=date('d-m-Y');
+            $comprobante_param['tipo_de_nota_de_credito']=1;
+            $items=CuentaDetalle::
+            select(
+                \DB::raw('Concepto.idConcepto as identificador_interno'),
+                \DB::raw('"ZZ" as unidad_de_medida'),
+                \DB::raw('Concepto.codigo'),
+                'Concepto.descripcion',
+                'CuentaDetalle.cantidad',
+                \DB::raw('(CuentaDetalle.subtotal+CuentaDetalle.descuento)/CuentaDetalle.cantidad as valor_unitario'),
+                \DB::raw('IFNULL(Concepto.valorConIGV,(CuentaDetalle.IGV+((CuentaDetalle.subtotal+CuentaDetalle.descuento)/CuentaDetalle.cantidad))) as precio_unitario'),
+                'CuentaDetalle.descuento',
+                \DB::raw('CuentaDetalle.subtotal as subtotal'),
+                \DB::raw('IF(CuentaDetalle.tipoIGV=0,1,CuentaDetalle.tipoIGV) as tipo_de_igv'),
+                \DB::raw('CuentaDetalle.IGV as igv'),
+                \DB::raw('CuentaDetalle.total as total'),
+                \DB::raw('"false" as anticipo_regularizacion')
+            )
+            ->join('Concepto','Concepto.idConcepto','CuentaDetalle.idConcepto')
+            ->where('idCuenta',$request->idCuenta)->get();
+
+            // ANULAR CUENTA
+                $anular=Cuenta::find($foundCuenta->idCuenta);
+                $anular->estado=3;
+                $anular->fechaAnulacion=date('Y-m-d');
+                $anular->save();
+
+                Pago::where('idCuenta', $foundCuenta->idCuenta)
+                ->update(['estado' => 0,'user_update'=> auth()->user()->idUsuario]);
+
+                if($foundCuenta->fechaVencimiento && $foundCuenta->estado==1){
+                    $venta_al_credito[] = [
+                        "cuota"=> 1,
+                        "fecha_de_pago"=> $foundCuenta->fechaVencimiento,
+                        "importe"=> $foundCuenta->total
+                    ];
+                    $comprobante_param['venta_al_credito']=$venta_al_credito;
+                }
+            // ANULAR CUENTA
+
+        }else{
+            $ndate=date_create($request->newFecha);
+            $newFechaformat=date_format($ndate,"d-m-Y");
+            $comprobante_param['fecha_de_vencimiento']=$newFechaformat;
+            $comprobante_param['tipo_de_nota_de_credito']=13;
+            $items=CuentaDetalle::
+            select(
+                \DB::raw('Concepto.idConcepto as identificador_interno'),
+                \DB::raw('"ZZ" as unidad_de_medida'),
+                \DB::raw('Concepto.codigo'),
+                'Concepto.descripcion',
+                'CuentaDetalle.cantidad',
+                \DB::raw('"0" as valor_unitario'),
+                \DB::raw('"0" as precio_unitario'),
+                \DB::raw('"0" as subtotal'),
+                \DB::raw('IF(CuentaDetalle.tipoIGV=0,1,CuentaDetalle.tipoIGV) as tipo_de_igv'),
+                \DB::raw('"0" as igv'),
+                \DB::raw('"0" as total'),
+                \DB::raw('"false" as anticipo_regularizacion')
+            )
+            ->join('Concepto','Concepto.idConcepto','CuentaDetalle.idConcepto')
+            ->where('idCuenta',$request->idCuenta)->get();
+
+            $venta_al_credito[] = [
+                "cuota"=> 1,
+                "fecha_de_pago"=> $newFechaformat,
+                "importe"=> $foundCuenta->total
+            ];
+            $comprobante_param['venta_al_credito']=$venta_al_credito;
+            
+            /*CHANGE FECHA VENC*/
+                $changeFecha=Cuenta::find($foundCuenta->idCuenta);
+                $changeFecha->fechaVencimiento=$request->newFecha;
+                $changeFecha->save();
+            /*CHANGE FECHA VENC*/
+        }
+        $comprobante_param['items']=$items;
+        $totalGravada=0;
+        $totalExonerada=0;
+        $totalIgv=0;
+        $totalDescuento=0;
+        /*SAVE IN BD*/
+            $Cuenta = new Cuenta();
+            $Cuenta->fechaEmision = date('Y-m-d');
+            $Cuenta->fechaVencimiento = $request->newFecha ? $request->newFecha : date('Y-m-d');
+            $Cuenta->tipoDocumento = 3; 
+            $Cuenta->serie = $serieOld;
+            $Cuenta->numero = $numeroComprobante; 
+            $Cuenta->idAdquiriente = $foundCuenta->idCliente;
+            $Cuenta->estado = 2; 
+            $Cuenta->user_create =  auth()->user()->idUsuario; 
+            $Cuenta->user_update =  auth()->user()->idUsuario; 
+            $Cuenta->IGV =$totalIgv; 
+            $Cuenta->subtotal = $totalGravada+$totalExonerada; 
+            $Cuenta->total = $totalGravada+$totalExonerada; 
+            $Cuenta->save();
+            foreach ($items as $key => $item) {
+                $totalDescuento+=$item['descuento'];
+                $totalIgv+=$item['igv'];
+                if($item['tipo_de_igv']===1){
+                    $totalGravada+=$item['total'];
+                }else{
+                    $totalExonerada+=$item['total'];
+                }
+                $Detalle = new CuentaDetalle();
+                $Detalle->idCuenta = $Cuenta->idCuenta; 
+                $Detalle->idConcepto = $item['identificador_interno']; 
+                $Detalle->tipoIGV = $item['tipo_de_igv'];
+                $Detalle->precioUnit =$item['precio_unitario'];
+                $Detalle->cantidad = $item['cantidad'];
+                $Detalle->subtotal = $item['subtotal'];
+                $Detalle->IGV =  $item['igv'];
+                $Detalle->total = $item['total'];
+                $Detalle->user_create =  auth()->user()->idUsuario; 
+                $Detalle->user_update =  auth()->user()->idUsuario; 
+                $Detalle->save(); 
+            }
+            $Cuenta->IGV =$totalIgv; 
+            $Cuenta->subtotal = $totalGravada+$totalExonerada; 
+            $Cuenta->total = $totalGravada+$totalExonerada; 
+            $Cuenta->save();
+            $comprobante_param['total_gravada']=$totalGravada===0 && $request->tiponc===2?"":($totalGravada-$totalIgv);
+            $comprobante_param['total_exonerada']=$totalExonerada===0?"":$totalExonerada;
+            $comprobante_param['total_igv']=$totalIgv;
+            $comprobante_param['total_descuento']=$totalDescuento===0?"":$totalDescuento;
+            $comprobante_param['total']=$totalExonerada+$totalGravada;
+        /*SAVE IN BD*/
+        try {
+            $client = new \GuzzleHttp\Client();
+            $response = $client->request('POST', env('APP_NUBEFACT_ROUTE'), [
+                'headers' => [
+                    'Content-type' => 'application/json; charset=utf-8',
+                    'Authorization'     => env('APP_NUBEFACT_KEY_108')
+                ],
+                \GuzzleHttp\RequestOptions::JSON   => $comprobante_param
+            ]);
+        }
+        catch (\GuzzleHttp\Exception\RequestException $e) {
+            \DB::rollback();
+            $response = $e->getResponse();
+            $responseBodyAsString = json_decode($response->getBody()->getContents());
+            if($responseBodyAsString->errors){
+                return response()->json([
+                    'message' => $responseBodyAsString->errors,
+                ], 401);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Nota de crédito generada!',
+            'data' => $comprobante_param
         ], 200);
     }
     

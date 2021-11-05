@@ -143,6 +143,16 @@ class ClienteController extends Controller
         ], 200);
     }
 
+
+    public function searchRucKAP($ruc)
+    {
+        $helper = new Helper;
+        $rpta=$helper::searchPremiumKAP('ruc',$ruc);
+        return response()->json([
+            'data' => $rpta,
+        ], 200);
+    }
+
     public function searchDniIntern($dni)
     {
         $helper = new Helper;

@@ -24,7 +24,7 @@
             <div style="display: block;">
                 <img 
                 style="width: 150px;"
-                src="https://www.cclam.org.pe/wp-content/uploads/2021/02/logo-png-con-bordes-1-e1613147392892.png"
+                src="https://cclam.org.pe/gs/static/media/logocclam.8304b563.png"
                 alt="logo_cclam" />
             </div>
             <div style="margin: 0 2rem 2rem;">
@@ -53,7 +53,7 @@
                         <div style="margin: 0 1rem 0 0;">
                             <img 
                             style="width: 120px;"
-                            src="https://www.cclam.org.pe/recursos.base/storage/colaborador/resources/img1.png" />
+                            src="https://www.cclam.org.pe/recursos.base/public/storage/colaborador/resources/img1.png" />
                         </div>
                         <div style="width: 100%">
                             <h4 style="margin: 0;">PUBLICIDAD VIRTUAL EN REDES SOCIALES</h4>
@@ -72,7 +72,7 @@
                         <div style="margin: 0 0 0 1rem;">
                             <img 
                             style="width: 120px;"
-                            src="https://www.cclam.org.pe/recursos.base/storage/colaborador/resources/img2.png" />
+                            src="https://www.cclam.org.pe/recursos.base/public/storage/colaborador/resources/img2.png" />
                         </div>
                     </div>
                     <div style="margin: 1.5rem 1rem;
@@ -82,7 +82,7 @@
                         <div style="margin: 0 1rem 0 0;">
                             <img 
                             style="width: 120px;"
-                            src="https://www.cclam.org.pe/recursos.base/storage/colaborador/resources/img3.png" />
+                            src="https://www.cclam.org.pe/recursos.base/public/storage/colaborador/resources/img3.png" />
                         </div>
                         <div>
                             <h4 style="margin: 0;">VÍDEO CONFERENCIA ASOCIADOS</h4>
@@ -100,7 +100,7 @@
                         <div style="margin: 0 0 0 1rem;">
                             <img
                             style="width: 120px;"
-                            src="https://www.cclam.org.pe/recursos.base/storage/colaborador/resources/img4.png" />
+                            src="https://www.cclam.org.pe/recursos.base/public/storage/colaborador/resources/img4.png" />
                         </div>
                     </div>
                     <h3 style="text-align: center;

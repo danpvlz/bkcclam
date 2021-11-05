@@ -93,6 +93,39 @@ class Helper {
         return $CuentasList->orderBy('fechaEmision', 'desc')->get();
     }
 
+    public static function checkPayInfoThrowMessage($numoperacion,$montoFact,$montoOp){
+        if($numoperacion){
+            $indicadoresOp = Pago::select(
+                \DB::raw('SUM(monto) as total'),
+                'montoPaid'
+            )
+            ->where('numoperacion',$numoperacion)
+            ->where('estado', 1)
+            ->groupBy('montoPaid')
+            ->get();
+            
+            if($montoOp==0){ //Monto de operación no puede ser cero
+                return 'El monto de operación no puede ser cero';
+            }
+
+            if($montoFact > $montoOp){ //Intento de montos de monto pagado mayor al de operación
+                return 'El monto pagado no puede ser mayor al de la operación.';
+            }
+            
+            if(sizeof($indicadoresOp)>1){ // Montos de pago distintos en la bd
+                return 'Esta operación tiene montos de operación distintos.';
+            }
+            if(sizeof($indicadoresOp)==1){
+                if($montoOp != $indicadoresOp[0]->montoPaid){ //Intento de montos de operación distintos
+                    return 'Esta operación fue registrada con otro monto.';
+                }
+                if(($montoFact+$indicadoresOp[0]->total) > $montoOp){ //Suma de montos pagados no puede exceder al de la operación
+                    return 'Los montos superarían al de la operación.';
+                }
+            }
+        }
+    }
+
     public static function checkPayInfo($numoperacion,$numsofdoc){
         if($numoperacion){
             $indicadoresOp = Pago::select(
@@ -146,13 +179,28 @@ class Helper {
     }
 
     public static function searchPremium($type,$doc){
-        $client = new \GuzzleHttp\Client();
+    $client = new \GuzzleHttp\Client();
         $response = $client->request('POST', 'https://ruc.com.pe/api/v1/consultas', [
             'headers' => [
                 'Content-type' => 'application/json; charset=utf-8',
             ],
             \GuzzleHttp\RequestOptions::JSON   => [
                 "token" => 'c5ea8f77-e1ab-4626-8674-8e1f77e064cd-b12e1862-d8c0-45fe-9806-a0aa1de01a77',
+                "$type" => $doc
+            ]
+        ]);
+        $rpta= $response->getBody()->getContents();
+        return json_decode($rpta);
+    }
+
+    public static function searchPremiumKAP($type,$doc){
+    $client = new \GuzzleHttp\Client();
+        $response = $client->request('POST', 'https://ruc.com.pe/api/v1/consultas', [
+            'headers' => [
+                'Content-type' => 'application/json; charset=utf-8',
+            ],
+            \GuzzleHttp\RequestOptions::JSON   => [
+                "token" => '4b97f552-74a0-46e2-bfd9-97b7dec4a27e-dc0194d0-b158-425a-853e-3f36e963b082',
                 "$type" => $doc
             ]
         ]);

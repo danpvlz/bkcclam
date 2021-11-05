@@ -285,6 +285,11 @@ class ReservaConceptoController extends Controller
             $helper = new CajaController;
             $rpta = $helper::saveCajaCuenta($request);
             $rptaJSON = json_decode($rpta);
+            if($rptaJSON->error){
+                return response()->json([
+                    'message' => $rptaJSON->message,
+                ],500);
+            }
             
             $reserva = ReservaConcepto::find($request->idRC);
             $reserva->idCuenta = $rptaJSON->idCuenta;
