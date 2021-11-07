@@ -590,7 +590,7 @@ class CajaController extends Controller
             $rpta = self::saveCajaCuenta($request);
             $jsonRpta=json_decode($rpta);
             
-            if($jsonRpta->error){
+            if(property_exists($jsonRpta,'error')){
                 return response()->json([
                     'message' => $jsonRpta->message,
                 ],500);

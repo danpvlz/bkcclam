@@ -285,7 +285,7 @@ class ReservaConceptoController extends Controller
             $helper = new CajaController;
             $rpta = $helper::saveCajaCuenta($request);
             $rptaJSON = json_decode($rpta);
-            if($rptaJSON->error){
+            if(property_exists($rptaJSON,'error')){
                 return response()->json([
                     'message' => $rptaJSON->message,
                 ],500);

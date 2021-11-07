@@ -119,7 +119,7 @@ class Helper {
                 if($montoOp != $indicadoresOp[0]->montoPaid){ //Intento de montos de operación distintos
                     return 'Esta operación fue registrada con otro monto.';
                 }
-                if(($montoFact+$indicadoresOp[0]->total) > $montoOp){ //Suma de montos pagados no puede exceder al de la operación
+                if(ROUND($montoFact+$indicadoresOp[0]->total,2) > $montoOp){ //Suma de montos pagados no puede exceder al de la operación
                     return 'Los montos superarían al de la operación.';
                 }
             }
