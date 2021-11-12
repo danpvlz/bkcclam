@@ -23,6 +23,9 @@ use App\Exports\CajaExport;
 use App\Exports\CajaDetalleExport;
 use App\Http\Controllers\CuentaController;
 
+use Illuminate\Support\Facades\Mail;
+use App\Mail\Vouchers;
+
 class CajaController extends Controller
 {
     
@@ -1220,6 +1223,57 @@ class CajaController extends Controller
         return response()->json([
             'message' => 'Nota de crédito generada!',
             'data' => $comprobante_param
+        ], 200);
+    }
+
+    public function sendMail(Request $request)
+    {
+        $request->validate([
+            'idCuenta' => 'integer',
+            'correo' => 'required',
+        ]);
+
+        $Cuenta= Cuenta::join('Cliente', 'Cliente.idCliente', '=', 'Cuenta.idAdquiriente')
+        ->leftJoin('users', 'Cuenta.user_update', '=', 'users.idUsuario')
+        ->leftJoin('Colaborador', 'Colaborador.idColaborador', '=', 'users.idColaborador')
+        ->select(
+            'Cuenta.fechaEmision', 
+            'Cuenta.fechaVencimiento', 
+            'Cuenta.idCuenta', 
+            'Cuenta.serie', 
+            'Cuenta.numero', 
+            'Cliente.denominacion',
+            'Cuenta.total', 
+            'Cuenta.estado',
+            'Cuenta.tipoDocumento',
+            \DB::raw('IFNULL(Cuenta.observaciones, "-") as observaciones'),
+            \DB::raw('Cuenta.updated_at as lastUpdate'),
+            \DB::raw('IF(Cuenta.user_update!=0, CONCAT(Colaborador.nombres, " ", Colaborador.apellidoPaterno),"-") as userLastChanged')
+        )->where('idCuenta',$request->idCuenta)->first();
+
+        //CONSULTA NUEBEFACT
+        $nubefactrequest = new \stdClass();
+        $nubefactrequest->tipo_de_comprobante=$Cuenta->tipoDocumento;
+        $nubefactrequest->serie=$Cuenta->serie;
+        $nubefactrequest->numero=$Cuenta->numero;
+        $helper = new CuentaController;
+        $nubefact = $helper::getNubefact($nubefactrequest);
+        $nubefact = json_decode($nubefact);
+        //CONSULTA NUEBEFACT
+        
+        //ENVIO CORREO
+        $CorreoData = new \stdClass();
+        $CorreoData->comprobante = $Cuenta->serie.'-'.$Cuenta->numero;
+        $CorreoData->receiver = $request->correo;
+        $CorreoData->pdf = $nubefact->enlace_del_pdf;
+        $CorreoData->xml = $nubefact->enlace_del_xml;
+        $CorreoData->cdr = $nubefact->enlace_del_cdr;
+
+        Mail::to($request->correo)->send(new Vouchers($CorreoData));
+        //ENVIO CORREO
+
+        return response()->json([
+            'message' => 'Correo enviado.'
         ], 200);
     }
     

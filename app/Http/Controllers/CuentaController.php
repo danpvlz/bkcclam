@@ -24,6 +24,9 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 use App\Helpers\Helper;
 
+use Illuminate\Support\Facades\Mail;
+use App\Mail\Vouchers;
+
 class CuentaController extends Controller
 {
 
@@ -1534,8 +1537,10 @@ class CuentaController extends Controller
     }
     
     public function getNumComprobante(Request $request){
-        $numeroComprobante=Cuenta::where('serie','like','%'.$request->serie)->where('tipoDocumento',$request->typedoc)->max('numero')+1;
-        return $numeroComprobante;
+        $serieOld = $request->typedoc == 1 || $request->typedoc == 5 ? "F109" : "B109";
+
+        $numeroComprobante=Cuenta::where('serie','like',$serieOld)->where('tipoDocumento',$request->typedoc > 3 ? 3 : $request->typedoc)->max('numero')+1;
+        return $request->typedoc ? $numeroComprobante : "-";
     }
 
     public function listPendings(Request $request)
@@ -1569,10 +1574,60 @@ class CuentaController extends Controller
             $first->where('Sector.idSector',$request->cobradorFiltro);
         }
 
-        
-
         return CuentaResourse::collection(
             $first->orderBy('Cuenta.fechaVencimiento','asc')->orderBy('idCuenta', 'desc')->paginate(10)
         );
+    }
+
+    public function sendMail(Request $request)
+    {
+        $request->validate([
+            'idCuenta' => 'integer',
+            'correo' => 'required',
+        ]);
+
+        $Cuenta= Cuenta::join('Asociado', 'Asociado.idAsociado', '=', 'Cuenta.idAdquiriente')
+        ->leftJoin('Empresa', 'Empresa.idAsociado', '=', 'Asociado.idAsociado')
+        ->leftJoin('Persona', 'Persona.idAsociado', '=', 'Asociado.idAsociado')
+        ->leftJoin('users', 'Cuenta.user_update', '=', 'users.idUsuario')
+        ->leftJoin('Colaborador', 'Colaborador.idColaborador', '=', 'users.idColaborador')
+        ->select(
+            'Cuenta.fechaEmision', 
+            'Cuenta.fechaVencimiento', 
+            'Cuenta.idCuenta', 
+            'Cuenta.serie', 
+            'Cuenta.numero', 
+            \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.razonSocial,Persona.nombresCompletos) as denominacion'),
+            'Cuenta.total', 
+            'Cuenta.estado',
+            'Cuenta.tipoDocumento',
+            \DB::raw('IFNULL(Cuenta.observaciones, "-") as observaciones'),
+            \DB::raw('Cuenta.updated_at as lastUpdate'),
+            \DB::raw('IF(Cuenta.user_update!=0, CONCAT(Colaborador.nombres, " ", Colaborador.apellidoPaterno),"-") as userLastChanged')
+        )->where('idCuenta',$request->idCuenta)->first();
+
+        //CONSULTA NUEBEFACT
+        $nubefactrequest = new \stdClass();
+        $nubefactrequest->tipo_de_comprobante=$Cuenta->tipoDocumento;
+        $nubefactrequest->serie=$Cuenta->serie;
+        $nubefactrequest->numero=$Cuenta->numero;
+        $nubefact = self::getNubefact($nubefactrequest);
+        $nubefact = json_decode($nubefact);
+        //CONSULTA NUEBEFACT
+        
+        //ENVIO CORREO
+        $CorreoData = new \stdClass();
+        $CorreoData->comprobante = $Cuenta->serie.'-'.$Cuenta->numero;
+        $CorreoData->receiver = $request->correo;
+        $CorreoData->pdf = $nubefact->enlace_del_pdf;
+        $CorreoData->xml = $nubefact->enlace_del_xml;
+        $CorreoData->cdr = $nubefact->enlace_del_cdr;
+
+        Mail::to($request->correo)->send(new Vouchers($CorreoData));
+        //ENVIO CORREO
+
+        return response()->json([
+            'message' => 'Correo enviado.'
+        ], 200);
     }
 }
