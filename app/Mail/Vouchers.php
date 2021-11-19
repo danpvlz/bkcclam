@@ -30,19 +30,31 @@ class Vouchers extends Mailable
      */
     public function build()
     {
+        $client = new \GuzzleHttp\Client();
+        
         $demoTmp = $this->demo;
-        $finalMail=$this->subject($demoTmp->comprobante.' COMPROBANTES')->text('mails.vouchers');
-        if(property_exists($demoTmp,'archivo')){
-            $finalMail->attach($demoTmp->archivo);
+        
+        $subjectTmp=$demoTmp->comprobante.' COMPROBANTES';
+        if($demoTmp->subject){
+            $subjectTmp=$demoTmp->subject;
         }
-        if(property_exists($demoTmp,'pdf')){
-            $finalMail->attach($demoTmp->pdf);
+
+        $finalMail=$this->subject($subjectTmp)->text('mails.vouchers');
+
+        if(property_exists($demoTmp,'pdf') && $demoTmp->pdf){
+            $res = $client->get($demoTmp->pdf);
+            $content = (string) $res->getBody();
+            $finalMail->attachData($content,$demoTmp->pdf);
         }
-        if(property_exists($demoTmp,'xml')){
-            $finalMail->attach($demoTmp->xml);
+        if(property_exists($demoTmp,'xml') && $demoTmp->xml){
+            $res = $client->get($demoTmp->xml);
+            $content = (string) $res->getBody();
+            $finalMail->attachData($content,$demoTmp->xml);
         }
-        if(property_exists($demoTmp,'cdr')){
-            $finalMail->attach($demoTmp->cdr);
+        if(property_exists($demoTmp,'cdr') && $demoTmp->cdr){
+            $res = $client->get($demoTmp->cdr);
+            $content = (string) $res->getBody();
+            $finalMail->attachData($content,$demoTmp->cdr);
         }
         return $demoTmp;
     }

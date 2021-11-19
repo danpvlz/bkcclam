@@ -888,7 +888,7 @@ class AssociatedController extends Controller
                 $Persona->nombres = $request->nombres_persona;
                 $Persona->apellidoPaterno = $request->paterno_persona;
                 $Persona->apellidoMaterno = $request->materno_persona;
-                $Persona->sexo = $request->sexo;
+                $Persona->sexo = json_decode($request->sexo)['value'];
                 $Persona->fechaNacimiento = $request->fechanacimiento_persona;
                 $Persona->direccion = $request->direccionfiscal_persona;
                 $Persona->actividad = $request->actividad_persona;
