@@ -1618,10 +1618,17 @@ class CuentaController extends Controller
         //ENVIO CORREO
         $CorreoData = new \stdClass();
         $CorreoData->comprobante = $Cuenta->serie.'-'.$Cuenta->numero;
+        $CorreoData->subject = $request->asunto;
         $CorreoData->receiver = $request->correo;
-        $CorreoData->pdf = $nubefact->enlace_del_pdf;
-        $CorreoData->xml = $nubefact->enlace_del_xml;
-        $CorreoData->cdr = $nubefact->enlace_del_cdr;
+        if($request->pdf){
+            $CorreoData->pdf = $nubefact->enlace_del_pdf;
+        }
+        if($request->xml){
+            $CorreoData->xml = $nubefact->enlace_del_xml;
+        }
+        if($request->cdr){
+            $CorreoData->cdr = $nubefact->enlace_del_cdr;
+        }
 
         Mail::to($request->correo)->send(new Vouchers($CorreoData));
         //ENVIO CORREO

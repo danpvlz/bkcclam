@@ -23,6 +23,7 @@ use App\Exports\CajaExport;
 use App\Exports\CajaDetalleExport;
 use App\Http\Controllers\CuentaController;
 
+use App\Jobs\SendEmailJob;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\Vouchers;
 
@@ -554,6 +555,16 @@ class CajaController extends Controller
             if($request->opcion!=6){
                 $helper = new Helper;
                 $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
+            }
+
+            if($request->correo){
+                $details = [];
+                $details["comprobante"]=$Cuenta->serie.'-'.$Cuenta->numero;
+                $details["correo"]=$request->correo;
+                $details["enlace_del_pdf"]=$nubefact->enlace_del_pdf;
+                $details["enlace_del_xml"]=$nubefact->enlace_del_xml;
+                $details["enlace_del_cdr"]=$nubefact->enlace_del_cdr;
+                SendEmailJob::dispatch($details);
             }
             
             $rpta = new \stdClass();
@@ -1264,13 +1275,28 @@ class CajaController extends Controller
         //ENVIO CORREO
         $CorreoData = new \stdClass();
         $CorreoData->comprobante = $Cuenta->serie.'-'.$Cuenta->numero;
+        $CorreoData->subject = $request->asunto;
         $CorreoData->receiver = $request->correo;
-        $CorreoData->pdf = $nubefact->enlace_del_pdf;
-        $CorreoData->xml = $nubefact->enlace_del_xml;
-        $CorreoData->cdr = $nubefact->enlace_del_cdr;
-
+        if($request->pdf){
+            $CorreoData->pdf = $nubefact->enlace_del_pdf;
+        }
+        if($request->xml){
+            $CorreoData->xml = $nubefact->enlace_del_xml;
+        }
+        if($request->cdr){
+            $CorreoData->cdr = $nubefact->enlace_del_cdr;
+        }
         Mail::to($request->correo)->send(new Vouchers($CorreoData));
         //ENVIO CORREO
+        
+        //ENVIO CORREO
+        // $details = [];
+        // $details["comprobante"]=$Cuenta->serie.'-'.$Cuenta->numero;
+        // $details["correo"]=$request->correo;
+        // $details["enlace_del_pdf"]=$nubefact->enlace_del_pdf;
+        // $details["enlace_del_xml"]=$nubefact->enlace_del_xml;
+        // $details["enlace_del_cdr"]=$nubefact->enlace_del_cdr;
+        // SendEmailJob::dispatch($details);
 
         return response()->json([
             'message' => 'Correo enviado.'
