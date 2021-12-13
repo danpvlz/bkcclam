@@ -259,7 +259,7 @@ class CajaController extends Controller
         }
 
         $CurrentColaborador = Colaborador::find(auth()->user()->idColaborador);
-        if(auth()->user()->rol === 1 && $CurrentColaborador){
+        if((auth()->user()->rol === 1 || auth()->user()->rol === 9) && $CurrentColaborador){
             $first->where('CategoriaCuenta.idArea','=',$CurrentColaborador->idArea);
         }
 
@@ -507,6 +507,7 @@ class CajaController extends Controller
                 "detraccion_porcentaje"             => $request->detraccion_porcentaje,
                 "medio_de_pago_detraccion"          => $request->medioDetraccion,
                 //DETRACCION
+                "orden_compra_servicio" =>  $request->orden_compra_servicio,
                 "enviar_automaticamente_a_la_sunat" => "true",
                 "enviar_automaticamente_al_cliente" => $request->correo=="" ? "false" : "true",
                 "observaciones"                     => $request->observacion ? $request->observacion : '',
@@ -520,10 +521,25 @@ class CajaController extends Controller
             
             if( $request->tipo_de_comprobante!=3){
                 if($request->pagado!=2){
+                    $cuotaFinal=$totalAcumulado;
+                    //SI HAY DETRACCION
+                    if($request->detraccion){
+                        $detTotal=0;
+                        if($request->detraccion_total){
+                            $detTotal=$request->detraccion_total;
+                        }
+                        if($request->detraccion_porcentaje){
+                            $detracporcent=$request->detraccion_porcentaje;
+                            $detTotal=$cuotaFinal*$detracporcent/100;
+                        }
+                        $cuotaFinal= $cuotaFinal-$detTotal;
+                        $cuotaFinal=ROUND($cuotaFinal,2);
+                    }
+                    //SI HAY DETRACCION
                     $venta_al_credito[]=[
                         "cuota" => 1,
                         "fecha_de_pago" => $request->fechaVencimiento,
-                        "importe" => $totalAcumulado,
+                        "importe" => $cuotaFinal,
                     ];
                     $comprobante_param["medio_de_pago"]="CREDITO";
                     $comprobante_param["condiciones_de_pago"]="CRÉDITO AL ".$request->fechaVencimiento;
@@ -581,7 +597,7 @@ class CajaController extends Controller
             throw new Exception($e->getMessage());
         }
     }
-
+    
     /**
      * Store a newly created resource in storage.
      *
@@ -743,11 +759,11 @@ class CajaController extends Controller
             } 
             $Pago->save();
             \DB::commit();
-            /*
+            
             if($request->opcion!=6){
                 $helper = new Helper;
                 $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
-            }*/
+            }
             
             return response()->json([ 
                 'message' => 'Pago registrado.', 
@@ -1178,8 +1194,8 @@ class CajaController extends Controller
             $Cuenta->numero = $numeroComprobante; 
             $Cuenta->idAdquiriente = $foundCuenta->idCliente;
             $Cuenta->estado = 2; 
-            $Cuenta->user_create =  auth()->user()->idUsuario; 
-            $Cuenta->user_update =  auth()->user()->idUsuario; 
+            $Cuenta->user_create =  auth()->user() ? auth()->user()->idUsuario : 0; 
+            $Cuenta->user_update =  auth()->user() ? auth()->user()->idUsuario : 0;
             $Cuenta->IGV =$totalIgv; 
             $Cuenta->subtotal = $totalGravada+$totalExonerada; 
             $Cuenta->total = $totalGravada+$totalExonerada; 
@@ -1201,8 +1217,8 @@ class CajaController extends Controller
                 $Detalle->subtotal = $item['subtotal'];
                 $Detalle->IGV =  $item['igv'];
                 $Detalle->total = $item['total'];
-                $Detalle->user_create =  auth()->user()->idUsuario; 
-                $Detalle->user_update =  auth()->user()->idUsuario; 
+                $Detalle->user_create =  auth()->user() ? auth()->user()->idUsuario : 0;
+                $Detalle->user_update =  auth()->user() ? auth()->user()->idUsuario : 0;
                 $Detalle->save(); 
             }
             $Cuenta->IGV =$totalIgv; 
@@ -1293,6 +1309,7 @@ class CajaController extends Controller
         if($request->cdr){
             $CorreoData->cdr = $nubefact->enlace_del_cdr;
         }
+
         Mail::to($request->correo)->send(new Vouchers($CorreoData));
         //ENVIO CORREO
         
