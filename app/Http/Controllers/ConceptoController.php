@@ -125,27 +125,46 @@ class ConceptoController extends Controller
         }
     }
 
-    public function listConceptosPublic(Request $request)
+    public function listConceptosPublicWeb(Request $request)
     {
         $ConceptList = 
             Concepto::
             select(
                 \DB::raw('Concepto.idConcepto as id'),
-                \DB::raw('Area.nombre as area'),
-                \DB::raw('CategoriaCuenta.nombre as subarea'),
+                \DB::raw('CategoriaCuenta.idCategoria as area'),
+                \DB::raw('CategoriaCuenta.nombre as area_nombre'),
                 \DB::raw('descripcion as servicio'),
+                \DB::raw('descripcionInWeb as descripcion'),
                 \DB::raw('valorConIGV as precio')
                 )
             ->join('CategoriaCuenta','Concepto.categoriaCuenta','=','CategoriaCuenta.idCategoria')
             ->join('Area','Area.idArea','=','CategoriaCuenta.idArea')
-            ->where('Concepto.vigente',1)
+            ->where('Concepto.inWeb',1)
             ->orderBy('Concepto.descripcion','desc');
             
         return $ConceptList->get();
     }
-
-
-
+    
+    public function getConceptoPublicWeb($idConcepto)
+    {
+        $ConceptList = 
+            Concepto::
+            select(
+                \DB::raw('Concepto.idConcepto as id'),
+                \DB::raw('CategoriaCuenta.idCategoria as area'),
+                \DB::raw('CategoriaCuenta.nombre as area_nombre'),
+                \DB::raw('descripcion as servicio'),
+                \DB::raw('descripcionInWeb as descripcion'),
+                \DB::raw('valorConIGV as precio')
+                )
+            ->join('CategoriaCuenta','Concepto.categoriaCuenta','=','CategoriaCuenta.idCategoria')
+            ->join('Area','Area.idArea','=','CategoriaCuenta.idArea')
+            ->where('Concepto.inWeb',1)
+            ->where('Concepto.idConcepto',$idConcepto)
+            ->orderBy('Concepto.descripcion','desc');
+            
+        return $ConceptList->first();
+    }
 
     /**
      * Display the specified resource.
