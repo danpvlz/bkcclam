@@ -1522,7 +1522,7 @@ class CuentaController extends Controller
         if(is_null($CuentaAnular)){
             return response()->json([
                 'message' => 'Cuenta no encontrada',
-            ], 400);
+            ], 500);
         }
 
         $CuentaAnular->estado=1;
@@ -1578,6 +1578,8 @@ class CuentaController extends Controller
         if($request->cobradorFiltro){
             $first->where('Sector.idSector',$request->cobradorFiltro);
         }
+
+        
 
         return CuentaResourse::collection(
             $first->orderBy('Cuenta.fechaVencimiento','asc')->orderBy('idCuenta', 'desc')->paginate(10)
