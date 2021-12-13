@@ -318,7 +318,6 @@ class CajaController extends Controller
     }
     
     public static function saveCajaCuenta($request) : string{
-        
         try {
             /*CHECK REAL DIRECTION*/
             $clientedit= Cliente::where('idCliente',$request->idCliente)->first();
@@ -378,8 +377,8 @@ class CajaController extends Controller
                 $Cuenta->subtotal = 0;
                 $Cuenta->IGV = 0; 
                 $Cuenta->total = 0; 
-                $Cuenta->user_create =  auth()->user()->idUsuario; 
-                $Cuenta->user_update =  auth()->user()->idUsuario; 
+                $Cuenta->user_create =  auth()->user() ? auth()->user()->idUsuario : 0; 
+                $Cuenta->user_update =  auth()->user() ? auth()->user()->idUsuario : 0; 
                 $Cuenta->save();
             //CUENTA
             
@@ -413,8 +412,8 @@ class CajaController extends Controller
                     $Detalle->subtotal = $subtotal; //76.27
                     $Detalle->IGV =   $igv; //13.73
                     $Detalle->total = $total; //90
-                    $Detalle->user_create =  auth()->user()->idUsuario; 
-                    $Detalle->user_update =  auth()->user()->idUsuario; 
+                    $Detalle->user_create =  auth()->user() ? auth()->user()->idUsuario : 0; 
+                    $Detalle->user_update =  auth()->user() ? auth()->user()->idUsuario : 0; 
 
                     $gravadaAcumulado = $gravadaAcumulado + ROUND($item['igv']==1 ? $subtotal : 0,2);
                     $gratuitaAcumulado = $gratuitaAcumulado + ROUND((($item['igv']==7 || $item['igv']==6) ? $subtotal : 0),2);
@@ -476,8 +475,8 @@ class CajaController extends Controller
                     $Pago->numoperacion = $request->numoperacion; 
                     $Pago->numsofdoc = $request->numsofdoc; 
                     $Pago->montoPaid = $request->montoPaid; 
-                    $Pago->user_create =  auth()->user()->idUsuario; 
-                    $Pago->user_update =  auth()->user()->idUsuario;
+                    $Pago->user_create =  auth()->user() ? auth()->user()->idUsuario : 0; 
+                    $Pago->user_update =  auth()->user() ? auth()->user()->idUsuario : 0;
                     $Pago->save(); 
                 }
             //PAGO
@@ -487,7 +486,7 @@ class CajaController extends Controller
                 "tipo_de_comprobante"               => $request->tipo_de_comprobante, //2=BOLETA/1=FACTURA
                 "serie"                             => $serie,
                 "numero"				            => $numeroComprobante,
-                "sunat_transaction"			        => "1",
+                "sunat_transaction"			        => $request->detraccion ? "30" : "1",
                 "cliente_tipo_de_documento"		    => $ClienteSearched->tipoDocumento,
                 "cliente_numero_de_documento"	    => $ClienteSearched->documento,
                 "cliente_denominacion"              => $ClienteSearched->denominacion,
@@ -501,7 +500,13 @@ class CajaController extends Controller
                 "total_gratuita"                    => $gratuitaAcumulado ? $gratuitaAcumulado : "",
                 "total_igv"                         => $igvAcumulado ? ROUND($igvAcumulado,2) : "",
                 "total"                             => $totalAcumulado,
-                "detraccion"                        => "false",
+                //DETRACCION
+                "detraccion"                        => $request->detraccion,
+                "detraccion_tipo"                   => $request->tipoDetraccion,
+                "detraccion_total"                  => $request->detraccion_total,
+                "detraccion_porcentaje"             => $request->detraccion_porcentaje,
+                "medio_de_pago_detraccion"          => $request->medioDetraccion,
+                //DETRACCION
                 "enviar_automaticamente_a_la_sunat" => "true",
                 "enviar_automaticamente_al_cliente" => $request->correo=="" ? "false" : "true",
                 "observaciones"                     => $request->observacion ? $request->observacion : '',
@@ -540,22 +545,20 @@ class CajaController extends Controller
                 ]);
             }
             catch (\GuzzleHttp\Exception\RequestException $e) {
-                \DB::rollback();
                 $response = $e->getResponse();
                 $responseBodyAsString = json_decode($response->getBody()->getContents());
-                if($responseBodyAsString->errors){
-                    return response()->json([
-                        'message' => $responseBodyAsString->errors,
-                    ], 401);
+                if(property_exists($responseBodyAsString,"errors")){
+                    \DB::rollback();
+                    throw new Exception($responseBodyAsString->errors);
                 }
             }
             
             \DB::commit();
             
-            if($request->opcion!=6){
-                $helper = new Helper;
-                $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
-            }
+            // if($request->opcion!=6){
+            //     $helper = new Helper;
+            //     $helper::checkPayInfo($request->numoperacion,$request->numsofdoc);
+            // }
 
             if($request->correo){
                 $details = [];
@@ -997,12 +1000,14 @@ class CajaController extends Controller
             'lineCobrado' =>$lineGraphCobrado,
         ], 200);
     }
+    
     public function generateNC(Request $request)
     {
         $request->validate([
             'idCuenta' => 'integer',
             'tiponc' => 'required',
         ]);
+        \DB::beginTransaction();
         $foundCuenta= Cuenta::join('Cliente', 'Cliente.idCliente', '=', 'Cuenta.idAdquiriente')
         ->select(
             'Cliente.idCliente',
@@ -1093,7 +1098,7 @@ class CajaController extends Controller
                 'Concepto.descripcion',
                 'CuentaDetalle.cantidad',
                 \DB::raw('(CuentaDetalle.subtotal+CuentaDetalle.descuento)/CuentaDetalle.cantidad as valor_unitario'),
-                \DB::raw('IFNULL(Concepto.valorConIGV,(CuentaDetalle.IGV+((CuentaDetalle.subtotal+CuentaDetalle.descuento)/CuentaDetalle.cantidad))) as precio_unitario'),
+                \DB::raw('(CuentaDetalle.IGV+((CuentaDetalle.subtotal+CuentaDetalle.descuento)/CuentaDetalle.cantidad)) as precio_unitario'),
                 'CuentaDetalle.descuento',
                 \DB::raw('CuentaDetalle.subtotal as subtotal'),
                 \DB::raw('IF(CuentaDetalle.tipoIGV=0,1,CuentaDetalle.tipoIGV) as tipo_de_igv'),
@@ -1221,15 +1226,17 @@ class CajaController extends Controller
             ]);
         }
         catch (\GuzzleHttp\Exception\RequestException $e) {
-            \DB::rollback();
             $response = $e->getResponse();
             $responseBodyAsString = json_decode($response->getBody()->getContents());
-            if($responseBodyAsString->errors){
+            if(property_exists($responseBodyAsString,"errors")){
+                \DB::rollback();
                 return response()->json([
                     'message' => $responseBodyAsString->errors,
-                ], 401);
+                ], 500);
             }
         }
+
+        \DB::commit();
 
         return response()->json([
             'message' => 'Nota de crédito generada!',
