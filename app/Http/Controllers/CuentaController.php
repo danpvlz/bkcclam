@@ -467,6 +467,8 @@ class CuentaController extends Controller
             'tiponc' => 'required',
         ]);
 
+        \DB::beginTransaction();
+
         $foundCuenta= Cuenta::join('Asociado', 'Asociado.idAsociado', '=', 'Cuenta.idAdquiriente')
         ->leftJoin('Empresa', 'Empresa.idAsociado', '=', 'Asociado.idAsociado')
         ->leftJoin('Persona', 'Persona.idAsociado', '=', 'Asociado.idAsociado')
@@ -575,7 +577,7 @@ class CuentaController extends Controller
                 'Concepto.descripcion',
                 'CuentaDetalle.cantidad',
                 \DB::raw('(CuentaDetalle.subtotal+CuentaDetalle.descuento)/CuentaDetalle.cantidad as valor_unitario'),
-                \DB::raw('IFNULL(Concepto.valorConIGV,(CuentaDetalle.IGV+((CuentaDetalle.subtotal+CuentaDetalle.descuento)/CuentaDetalle.cantidad))) as precio_unitario'),
+                \DB::raw('((CuentaDetalle.IGV+((CuentaDetalle.subtotal+CuentaDetalle.descuento)/CuentaDetalle.cantidad))) as precio_unitario'),
                 'CuentaDetalle.descuento',
                 \DB::raw('CuentaDetalle.subtotal as subtotal'),
                 \DB::raw('IF(CuentaDetalle.tipoIGV=0,1,CuentaDetalle.tipoIGV) as tipo_de_igv'),
@@ -607,7 +609,6 @@ class CuentaController extends Controller
                     $comprobante_param['venta_al_credito']=$venta_al_credito;
                 }
             // ANULAR CUENTA
-
         }else{
             $ndate=date_create($request->newFecha);
             $newFechaformat=date_format($ndate,"d-m-Y");
@@ -705,15 +706,17 @@ class CuentaController extends Controller
             ]);
         }
         catch (\GuzzleHttp\Exception\RequestException $e) {
-            \DB::rollback();
             $response = $e->getResponse();
             $responseBodyAsString = json_decode($response->getBody()->getContents());
-            if($responseBodyAsString->errors){
+            if(property_exists($responseBodyAsString,"errors")){
+                \DB::rollback();
                 return response()->json([
                     'message' => $responseBodyAsString->errors,
-                ], 401);
+                ], 500);
             }
         }
+        
+        \DB::commit();
 
         return response()->json([
             'message' => 'Nota de crédito generada!',
@@ -1027,7 +1030,7 @@ class CuentaController extends Controller
                     \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.actividad,Persona.actividad) as actividad'),
                     'Asociado.importeMensual',
                     'Asociado.idSector',
-            \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.direccion,Persona.direccion) as direccion'),
+                    \DB::raw('IF(Asociado.tipoAsociado=1, Empresa.direccion,Persona.direccion) as direccion'),
                     'Asociado.fechaIngreso'
                 )
                 ->leftJoin('Empresa', 'Empresa.idAsociado', '=', 'Asociado.idAsociado')
@@ -1044,7 +1047,7 @@ class CuentaController extends Controller
                         \DB::rollback();
                         return response()->json([
                             'message' => 'Cuenta no encontrada',
-                        ], 400);
+                        ], 500);
                     }
                     $CuentaAnular->estado=3;
                     $CuentaAnular->fechaAnulacion=date('Y-m-d');
@@ -1204,6 +1207,7 @@ class CuentaController extends Controller
                         $helper = new Helper;
                         $rpta=$helper::checkPayInfoThrowMessage($request->numoperacion,$acumuladoFinal,$request->montoPaid);
                         if($rpta){
+                            \DB::rollback();
                             return response()->json([
                                 'message' => $rpta,
                             ],500);
@@ -1282,13 +1286,13 @@ class CuentaController extends Controller
                     ]);
                 }
                 catch (\GuzzleHttp\Exception\RequestException $e) {
-                    \DB::rollback();
                     $response = $e->getResponse();
                     $responseBodyAsString = json_decode($response->getBody()->getContents());
-                    if($responseBodyAsString->errors){
+                    if(property_exists($responseBodyAsString,"errors")){
+                        \DB::rollback();
                         return response()->json([
                             'message' => $responseBodyAsString->errors,
-                        ], 401);
+                        ], 500);
                     }
                 }
             /*Nubefact*/
@@ -1537,10 +1541,11 @@ class CuentaController extends Controller
     }
     
     public function getNumComprobante(Request $request){
-        $serieOld = $request->typedoc == 1 || $request->typedoc == 5 ? "F109" : "B109";
+        $serieOld = $request->typedoc == 1 || $request->typedoc == 4 ? "F" : "B";
+        $serieOld.=$request->serie;
 
         $numeroComprobante=Cuenta::where('serie','like',$serieOld)->where('tipoDocumento',$request->typedoc > 3 ? 3 : $request->typedoc)->max('numero')+1;
-        return $request->typedoc ? $numeroComprobante : "-";
+        return $request->typedoc ? $numeroComprobante : "...";
     }
 
     public function listPendings(Request $request)
