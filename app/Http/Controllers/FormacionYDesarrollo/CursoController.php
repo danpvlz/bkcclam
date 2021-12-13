@@ -53,6 +53,7 @@ class CursoController extends Controller
 
             $Course = new Curso();
             $Course->descripcion = $request->descripcion;
+            $Course->inWeb = $request->inWeb ? 1 : 0;
             $Course->user_create = Auth::user()->idUsuario;
             $Course->user_update = Auth::user()->idUsuario;
             
@@ -71,6 +72,14 @@ class CursoController extends Controller
 
             
             $Course->idConcepto = $Concepto->idConcepto;
+        
+            if ($request->hasFile('foto')) {
+                $request->validate([
+                    'image' => 'mimes:jpg,jpeg,bmp,png'
+                ]);
+                $request->foto->store('courses/'.date('Y').'/'.date('m'), 'public');
+                $Course->foto = 'courses/'.date('Y').'/'.date('m').'/'.$request->foto->hashName();
+            }
             
             $Course->save();
 
@@ -160,6 +169,7 @@ class CursoController extends Controller
             \DB::beginTransaction();
             
             $Course->descripcion = $request->descripcion;
+            $Course->inWeb = $request->inWeb ? 1 : 0;
         
             if ($request->hasFile('foto')) {
                 $request->validate([
@@ -260,5 +270,17 @@ class CursoController extends Controller
         }
 
         return $cursoFilter->get();
+    }
+
+    
+    public function listForWeb(Request $request)
+    {
+        $CursoList = Curso::select(
+            
+            \DB::raw('CONCAT("'.env('APP_GS_LINK').'","inscripcion/",TO_BASE64(idCurso)) as inscripcionLink'),
+            \DB::raw('foto as coverImage'),
+            'descripcion','inWeb')->where('active',1)->where('inWeb',1)->orderBy('Curso.idCurso','desc');
+
+        return $CursoList->get();
     }
 }
