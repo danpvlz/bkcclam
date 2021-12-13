@@ -97,7 +97,7 @@ return [
     'present' => 'The :attribute field must be present.',
     'regex' => 'The :attribute format is invalid.',
     'required' => 'El campo :attribute es obligatorio.',
-    'required_if' => 'The :attribute field is required when :other is :value.',
+    'required_if' => 'El campo :attribute es obligatorio cuando :other es :value.',
     'required_unless' => 'The :attribute field is required unless :other is in :values.',
     'required_with' => 'The :attribute field is required when :values is present.',
     'required_with_all' => 'The :attribute field is required when :values are present.',

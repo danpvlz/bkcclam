@@ -3,17 +3,28 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-
 Route::get('grantpermission/{id}', 'AuthController@powerBiGrantPermission');
 Route::get('denypermission/{id}', 'AuthController@powerBiDenyPermission');
 Route::get('/searchRuc/{ruc}', 'ClienteController@searchRuc');
 Route::get('/sruckap/{ruc}', 'ClienteController@searchRucKAP');
 Route::post('/pendingmemberships', 'MembresiaController@membresiasPendientes');
 Route::get('/course/{id}', 'FormacionYDesarrollo\CursoController@show');
+Route::get('/externalcourselist', 'FormacionYDesarrollo\CursoController@listForWeb');
+Route::get('/externalnewslist', 'NoticiaController@listForWeb');
+Route::post('/externalnewget', 'NoticiaController@getForWeb');
+Route::get('/externalpronouncementlist', 'PronunciamientoController@listForWeb');
+Route::get('/externaldigitalmagazinelist', 'RevistaDigitalController@listForWeb');
+Route::post('/externaldigitalmagazineget', 'RevistaDigitalController@getForWeb');
+Route::get('/externalactivitylist', 'ActividadController@listForWeb');
 Route::post('/externalInscription', 'FormacionYDesarrollo\IncripcionController@externalInscription');
+Route::post('/iziiniweb', 'IziPayController@initweb');
 Route::post('/iziini', 'IziPayController@init');
 Route::post('/ipn', 'IziPayController@ipn');
-Route::post('/listconceptos', 'ConceptoController@listConceptosPublic');
+Route::post('/listconceptos', 'ConceptoController@listConceptosPublicWeb');
+Route::get('/getConceptoPay/{idC}', 'ConceptoController@getConceptoPublicWeb');
+Route::post('/checkDcto', 'DescuentoController@checkIfDescuento');
+Route::post('/saveorderonline', 'PedidoController@savePedidoWeb');
+Route::post('/paypedidoweb', 'PedidoController@payPedido');
 
 Route::group([
     'prefix' => 'auth'
@@ -34,8 +45,6 @@ Route::group([
         Route::post('updatepassword', 'AuthController@updatePassword');
     });
 });
-
-
 
 Route::group([
     'middleware' => 'auth:api'
@@ -123,6 +132,7 @@ Route::group([
     Route::get('/toPending/{id}', 'CuentaController@restoreToPending');
     Route::get('/probandoPay', 'CuentaController@probandoPay');
     Route::post('/listPendings109', 'CuentaController@listPendings');
+    Route::post('/sendmailcuenta', 'CuentaController@sendMail');
     
     
     Route::apiResource('/cliente', 'ClienteController');
@@ -143,6 +153,7 @@ Route::group([
     Route::post('/billsdetailexport108', 'CajaController@exportDetailBills');
     Route::post('/listPendings108', 'CajaController@listPendings');
     Route::post('/generateNCCj', 'CajaController@generateNC');
+    Route::post('/sendmailcaja', 'CajaController@sendMail');
     
 
     Route::post('/rcList', 'ReservaConceptoController@list');
@@ -172,6 +183,30 @@ Route::group([
     
     Route::post('/pagoList', 'PagoController@list');
     Route::post('/pagosExport', 'PagoController@export');
+    
+    Route::post('/noticialist', 'NoticiaController@list');
+    Route::post('/noticiastore', 'NoticiaController@store');
+    Route::post('/noticiadelete', 'NoticiaController@delete');
+    Route::post('/noticiashow', 'NoticiaController@show');
+    Route::post('/noticiaupdate/{id}', 'NoticiaController@update');
+    
+    Route::post('/pronunciamientolist', 'PronunciamientoController@list');
+    Route::post('/pronunciamientostore', 'PronunciamientoController@store');
+    Route::post('/pronunciamientodelete', 'PronunciamientoController@delete');
+    Route::post('/pronunciamientoshow', 'PronunciamientoController@show');
+    Route::post('/pronunciamientoupdate/{id}', 'PronunciamientoController@update');
+    
+    Route::post('/revistadigitallist', 'RevistaDigitalController@list');
+    Route::post('/revistadigitalstore', 'RevistaDigitalController@store');
+    Route::post('/revistadigitaldelete', 'RevistaDigitalController@delete');
+    Route::post('/revistadigitalshow', 'RevistaDigitalController@show');
+    Route::post('/revistadigitalupdate/{id}', 'RevistaDigitalController@update');
+    
+    Route::post('/actividadlist', 'ActividadController@list');
+    Route::post('/actividadstore', 'ActividadController@store');
+    Route::post('/actividaddelete', 'ActividadController@delete');
+    Route::post('/actividadshow', 'ActividadController@show');
+    Route::post('/actividadupdate/{id}', 'ActividadController@update');
     
     //Searchs
     Route::get('/sruc/{ruc}', 'ClienteController@searchRucIntern');
