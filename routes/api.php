@@ -25,6 +25,7 @@ Route::get('/getConceptoPay/{idC}', 'ConceptoController@getConceptoPublicWeb');
 Route::post('/checkDcto', 'DescuentoController@checkIfDescuento');
 Route::post('/saveorderonline', 'PedidoController@savePedidoWeb');
 Route::post('/paypedidoweb', 'PedidoController@payPedido');
+Route::post('/sendMailResultsKap', 'KapController@sendMailResultsKap');
 
 Route::group([
     'prefix' => 'auth'
